@@ -23,7 +23,7 @@ def sentimentAnalysis(text):
     return sentiment
 
 
-def SheetColorChanger(fileName, color, row, col):
+def SheetColorChanger(fileName):
     '''changes color of a cell of a sheet using pyxl'''
     import openpyxl as pyxl
     # open the file
@@ -37,7 +37,7 @@ def SheetColorChanger(fileName, color, row, col):
     # save the file
     wb.save(fileName)
 
-SheetColorChanger("testSheet.xlsx")
+#SheetColorChanger("testSheet.xlsx")
 
 def pyxlSheetReader(fileName, row, col):
     '''reads a cell of a sheet using pyxl'''
@@ -50,3 +50,22 @@ def pyxlSheetReader(fileName, row, col):
     cell = sheet[row][col]
     # return the cell
     return cell.value
+
+def sheetSentimentAnalyzer():
+    '''take user input and save it to start''' 
+    Column = input("Enter column to analyze: ")
+    startRow = input("Enter start row: ")
+    endRow = input("Enter end row: ")
+
+
+def fileSelector(): 
+    '''Use tkinter to create gui file selector''' 
+    import tkinter
+    from tkinter import filedialog
+    root = tkinter.Tk()
+    root.withdraw()
+    file_path = filedialog.askopenfilename()
+    return file_path
+
+
+SheetColorChanger(fileSelector())
