@@ -126,7 +126,7 @@ def dataSelector():
 def main():
     '''main function'''
     fileName = fileSelector()
-    column, startRow, endRow = rowSelector()
+    column, startRow, endRow = dataSelector()
     #fileName = "statements.xlsx"
     #column, startRow, endRow = "1", "1", "8"
     print("Filename: {}, Column: {}, Start Row: {}, End Row: {}".format(fileName, column, startRow, endRow))
@@ -145,7 +145,7 @@ def main():
     wb = pyxl.load_workbook(fileName)
 
     # Get the sheet
-    sheet = wb['Sheet1']
+    sheet = wb['Sheet2']
 
     # Insert column after for sentiment analysis
     sheet.insert_cols(column+2)
