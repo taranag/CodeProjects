@@ -68,20 +68,22 @@ def createTableWithLearnHeaders(slide, headers, rows, cols):
     table.table.rows[0].cells[len(headers)+2].text = "Total"
     return table.table
 
-def generatePPTXLearnData(companyID, filename, groupBy):
+def generatePPTXLearnData(companyID, filename, groupBy, startDate, endDate):
     startTime = time.time()
     # Connect to MySQL database
     connection = create_server_connection(host, user_name, user_password, db_name)
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
+    print(startDate)
+    print(endDate)
     query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
     query2 = '''select c.display_name,e.{},count(*) from score s
 left join employee e on e.id = s.userid
 left join course c on c.course_id = s.course_id
 where s.userid in (select id from employee where companyId = {})
-and s.date >= '2022-06-01'
-group by c.display_name,e.{};'''.format(groupBy, companyID, groupBy)
+and s.date >='{}' and s.date <='{}'
+group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(endDate), groupBy)
 
     # Attempt to execute_query and set result1 to the result of the query
     result1 = execute_query(connection, query1)
@@ -188,4 +190,4 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, groupBy)
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
 
-generatePPTXLearnData(92, "Learn5", "dept")
+generatePPTXLearnData(92, "Learn5", "dept", "2019-01-01", "2019-12-31")

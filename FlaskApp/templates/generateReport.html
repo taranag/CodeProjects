@@ -5,7 +5,7 @@
 
 <form method="post">
     <div class="form-group">
-        <label for="companyID">Company ID</label>
+        <label for="companyID">Company ID*</label>
         <input type="text" name="companyID"
                placeholder="ID of company" class="form-control"
                value="{{ request.form['companyID'] }}"></input>
@@ -19,7 +19,7 @@
     </div>
     -->
     <div class="form-group">
-        <label for="test">Type</label> <br>
+        <label for="test">Type*</label> <br>
         <input type="radio" name="options" id="download" value="download"> Download </input><br>
         <input type="radio" name="options" id="learn" value="learn"> Learn </input><br>
         <input type="radio" name="options" id="value" value="value" onclick="this.checked=false;
@@ -27,12 +27,21 @@
     </div>
 
     <div class="form-group">
-        <label for="groupBy">Group By?</label>
+        <label for="groupBy">Group By?*</label>
         <input type="text" name="groupBy"
                placeholder="level, dept, dept2, etc." class="form-control"
                value="{{ request.form['groupBy'] }}"></input>
     </div>
-    
+    <div class="form-group">
+        <label for="startDate">Start Date?*</label>
+        <input type="date" name="startDate" class="form-control"
+               value="{{ request.form['startDate'] }}"></input> 
+    </div>
+    <div class="form-group">
+        <label for="endDate">End Date?</label>
+        <input id="endDate" type="date" name="endDate" class="form-control"
+               value="{{ request.form['endDate'] }}"></input> 
+    </div>
     <div class="form-group">
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>

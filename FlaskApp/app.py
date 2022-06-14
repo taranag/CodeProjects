@@ -64,10 +64,15 @@ def generateReport():
         #type = request.form['type']
         type = request.form['options']
         groupBy = request.form['groupBy']
+        startDate = request.form['startDate']
+        endDate = request.form['endDate']
         
         todayDate = datetime.datetime.now()
 
-        if not companyID or not type or not groupBy:
+        if not endDate:
+            endDate = todayDate.strftime("%Y-%m-%d")
+
+        if not companyID or not type or not groupBy or not startDate:
             flash('Please make sure all fields are filled out!')
         else:
             fileName = "Company" + companyID + type.capitalize() + "By" + groupBy.capitalize() + str(todayDate.date())
@@ -77,7 +82,7 @@ def generateReport():
             # elif (type == "value"):
             #     url = generatePPTXValueData(companyID, fileName, groupBy)
             elif (type == "learn"):
-                 url = generatePPTXLearnData(companyID, fileName, groupBy)
+                 url = generatePPTXLearnData(companyID, fileName, groupBy, startDate, endDate)
             if (url != "" or url != None):
                 return send_file(url)
             flash("Error: Could not generate report!")

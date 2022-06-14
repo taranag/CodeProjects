@@ -82,7 +82,7 @@ def generatePPTXDownloadData(companyID, filename, groupBy):
     for row in result1:
         employeeDict[row[0]] = {groupBy: row[1], "status": row[2]}
         # format: employeeDict[id] = [dept, status]
-    print("Employee dictionary created with {} employees".format(len(employeeDict)))
+    #print("Employee dictionary created with {} employees".format(len(employeeDict)))
 
     # Create dictionary of unit dictionaries
     activeInactiveByGroup = {}
@@ -161,4 +161,4 @@ def generatePPTXDownloadData(companyID, filename, groupBy):
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
 
-#generatePPTXDownloadData(92, "Test1", "level")
+#generatePPTXDownloadData(92, "Test1", "level", "2022-06-01", "2022-06-14")
