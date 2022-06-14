@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{% block title %} Generate a New Report {% endblock %}</h1>
+
+<form method="post">
+    <!-- <div class="form-group">
+        <label for="companyID">Company ID*</label>
+        <input type="text" name="companyID"
+               placeholder="ID of company" class="form-control"
+               value="{{ request.form['companyID'] }}"></input>
+    </div> -->
+    <div class="form-group">
+        <label for="companyID">Company*</label>
+        <select name="companyID" class="form-control">
+            {% for c in companies %}
+                <option value={{c[0]}}>{{c[1]}} ({{c[0]}})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <!---
+    <div class="form-group">
+        <label for="type">Type of Report</label>
+        <input type="text" name="type"
+               placeholder="download or learn or value" class="form-control"
+               value="{{ request.form['type'] }}"></input>
+    </div>
+    -->
+    <div class="form-group">
+        <label for="options">Options*</label> <br>
+        <input type="checkbox" name="titlePage" id="titlePage" value="titlePage"> Title Page </input><br>
+        <input type="checkbox" name="download" id="download" value="download"> Download </input><br>
+        <input type="checkbox" name="learn" id="learn" value="learn"> Learn </input><br>
+        <input type="checkbox" name="value" id="value" value="value" onclick="this.checked=false;
+        alert('Sorry, this option is not available yet!')"> Value </input><br>
+    </div>
+
+    <div class="form-group">
+        <label for="groupBy">Group By?*</label>
+        <input type="text" name="groupBy"
+               placeholder="level, dept, dept2, etc." class="form-control"
+               value="{{ request.form['groupBy'] }}"></input>
+    </div>
+    <div class="form-group">
+        <label for="startDate">Start Date?*</label>
+        <input type="date" name="startDate" class="form-control"
+               value="{{ request.form['startDate'] }}"></input> 
+    </div>
+    <div class="form-group">
+        <label for="endDate">End Date?</label>
+        <input id="endDate" type="date" name="endDate" class="form-control"
+               value="{{ request.form['endDate'] }}"></input> 
+    </div>
+    
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form>
+{% endblock %}
