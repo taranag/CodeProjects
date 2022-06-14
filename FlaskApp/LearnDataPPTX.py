@@ -11,6 +11,7 @@ user_name = 'taran'
 user_password = 'DESKTOP-RMV78RR'
 db_name = 'seekapp'
 max_table_size = 8
+max_table_width = 5
 
 myPath = "generated/"
 
@@ -51,6 +52,22 @@ def createTable(slide, rows, cols, left, top, width, height):
     return table.table
 
 def createTableWithLearnHeaders(slide, headers, rows, cols):
+    """
+    Creates a table on a slide.
+    """
+    left = Inches(.333)
+    top = Inches(1.5)
+    width = Inches(9.5)
+    height = Inches(2)
+    table = slide.shapes.add_table(rows, cols, left, top, width, height)
+    # table.table.columns[2].width = Inches(2)
+    # table.table.columns[0].width = Inches(2)
+    #table.table.columns[cols-1].width = Inches(1)
+    for i in range(len(headers)):
+        table.table.rows[0].cells[i+1].text = headers[i]
+    return table.table
+
+def createTableWithFinalLearnHeaders(slide, headers, rows, cols):
     """
     Creates a table on a slide.
     """
@@ -124,39 +141,48 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     prs = pptx.Presentation()
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
-        if chunkCounter == 0:
-            slide = createBlankSlideWithTitle(prs, "Learn Status")
-        else:
-            slide = createBlankSlideWithTitle(prs, "Learn Status Continued")
-        # currCourseList = courseList[chunkCounter*max_table_size:(chunkCounter+1)*max_table_size]
-        currCourseList = courseList
-        currChunk = dict(itertools.islice(dataDict.items(), chunkCounter*max_table_size, chunkCounter*max_table_size + max_table_size))
-        groupLearnTable = createTableWithLearnHeaders(slide, currCourseList, len(currChunk) + 2, len(currCourseList) + 3)
-        currChunkKeys = list(currChunk.keys())
-        currChunkValues = list(currChunk.values())
-        for i in range (0, len(currChunkKeys)):
-            totalLearning = 0
-            groupLearnTable.rows[i+1].cells[0].text = currChunkKeys[i]
-            for j in range (0, len(currCourseList)):
-                if currCourseList[j] in currChunkValues[i]:
-                    groupLearnTable.rows[i+1].cells[j+1].text = str(currChunkValues[i][currCourseList[j]])
-                    totalLearning += currChunk[currChunkKeys[i]][currCourseList[j]]
-                else:
-                    groupLearnTable.rows[i+1].cells[j+1].text = "0"
-            groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalLearning)
-            groupLearnTable.rows[i+1].cells[len(currCourseList)+2].text = str(totalEmployeesByGroup[currChunkKeys[i]])
-        groupLearnTable.rows[len(currChunkKeys)+1].cells[0].text = "Total"
+        sliceCounter = 0
+        while(len(courseList) > sliceCounter*max_table_width):
+            if chunkCounter == 0 and sliceCounter == 0:
+                slide = createBlankSlideWithTitle(prs, "Learn Status")
+            else:
+                slide = createBlankSlideWithTitle(prs, "Learn Status Continued")
+            # currCourseList = courseList[chunkCounter*max_table_size:(chunkCounter+1)*max_table_size]
+            currCourseList = courseList[sliceCounter*max_table_width:(sliceCounter+1)*max_table_width]
+            currChunk = dict(itertools.islice(dataDict.items(), chunkCounter*max_table_size, chunkCounter*max_table_size + max_table_size))
+            if len(currCourseList) < (max_table_width - 1):
+                groupLearnTable = createTableWithFinalLearnHeaders(slide, currCourseList, len(currChunk) + 2, len(currCourseList) + 3)
+            else:
+                groupLearnTable = createTableWithLearnHeaders(slide, currCourseList, len(currChunk) + 2, len(currCourseList) + 1)
+            currChunkKeys = list(currChunk.keys())
+            currChunkValues = list(currChunk.values())
+            for i in range (0, len(currChunkKeys)):
+                totalLearning = 0
+                groupLearnTable.rows[i+1].cells[0].text = currChunkKeys[i]
+                for j in range (0, len(currCourseList)):
+                    if currCourseList[j] in currChunkValues[i]:
+                        groupLearnTable.rows[i+1].cells[j+1].text = str(currChunkValues[i][currCourseList[j]])
+                        totalLearning += currChunk[currChunkKeys[i]][currCourseList[j]]
+                    else:
+                        groupLearnTable.rows[i+1].cells[j+1].text = "0"
+                if len(currCourseList) < (max_table_width - 1):
+                    groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalLearning)
+                    groupLearnTable.rows[i+1].cells[len(currCourseList)+2].text = str(totalEmployeesByGroup[currChunkKeys[i]])
+            groupLearnTable.rows[len(currChunkKeys)+1].cells[0].text = "Total"
 
-        companyLearning = 0
-        for i in range (0, len(currCourseList)):
-            totalLearning = 0
-            for j in range (0, len(currChunkKeys)):
-                if currCourseList[i] in currChunkValues[j]:
-                    totalLearning += currChunk[currChunkKeys[j]][currCourseList[i]]
-            companyLearning += totalLearning
-            groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
-        groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(sum(totalEmployeesByGroup.values()) - companyLearning)
-        groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(sum(totalEmployeesByGroup.values()))
+            companyLearning = 0
+            for i in range (0, len(currCourseList)):
+                totalLearning = 0
+                for j in range (0, len(currChunkKeys)):
+                    if currCourseList[i] in currChunkValues[j]:
+                        totalLearning += currChunk[currChunkKeys[j]][currCourseList[i]]
+                companyLearning += totalLearning
+                groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
+
+            if len(currCourseList) < (max_table_width - 1):
+                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(sum(totalEmployeesByGroup.values()) - companyLearning)
+                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(sum(totalEmployeesByGroup.values()))
+            sliceCounter += 1
 
         chunkCounter += 1
 
@@ -190,4 +216,4 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
 
-#generatePPTXLearnData(92, "Learn5", "dept", "2019-01-01", "2019-12-31")
+generatePPTXLearnData(51, "Learn5", "dept", "2022-06-01", "2022-06-14")
