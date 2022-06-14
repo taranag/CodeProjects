@@ -4,11 +4,19 @@
 <h1>{% block title %} Generate a New Report {% endblock %}</h1>
 
 <form method="post">
-    <div class="form-group">
+    <!-- <div class="form-group">
         <label for="companyID">Company ID*</label>
         <input type="text" name="companyID"
                placeholder="ID of company" class="form-control"
                value="{{ request.form['companyID'] }}"></input>
+    </div> -->
+    <div class="form-group">
+        <label for="companyID">Company*</label>
+        <select name="companyID" class="form-control">
+            {% for c in companies %}
+                <option value={{c[0]}}>{{c[1]}} ({{c[0]}})</option>
+            {% endfor %}
+        </select>
     </div>
     <!---
     <div class="form-group">
@@ -19,10 +27,11 @@
     </div>
     -->
     <div class="form-group">
-        <label for="test">Type*</label> <br>
-        <input type="radio" name="options" id="download" value="download"> Download </input><br>
-        <input type="radio" name="options" id="learn" value="learn"> Learn </input><br>
-        <input type="radio" name="options" id="value" value="value" onclick="this.checked=false;
+        <label for="options">Options*</label> <br>
+        <input type="checkbox" name="titlePage" id="titlePage" value="titlePage"> Title Page </input><br>
+        <input type="checkbox" name="download" id="download" value="download"> Download </input><br>
+        <input type="checkbox" name="learn" id="learn" value="learn"> Learn </input><br>
+        <input type="checkbox" name="value" id="value" value="value" onclick="this.checked=false;
         alert('Sorry, this option is not available yet!')"> Value </input><br>
     </div>
 
@@ -42,6 +51,7 @@
         <input id="endDate" type="date" name="endDate" class="form-control"
                value="{{ request.form['endDate'] }}"></input> 
     </div>
+    
     <div class="form-group">
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>

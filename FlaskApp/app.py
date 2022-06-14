@@ -4,6 +4,7 @@ from flask import Flask, jsonify, render_template, request, send_file, url_for, 
 from werkzeug.exceptions import abort
 from DownloadDataPPTX import *
 from LearnDataPPTX import *
+from DataGenerator import generateFullReport, getCompanies
 
 def get_db_connection():
     conn = sqlite3.connect('database.db')
@@ -55,39 +56,48 @@ def create():
             conn.close()
             return redirect(url_for('index'))
 
+
+    
     return render_template('create.html')
 
 @app.route('/generateReport', methods=('GET', 'POST'))
 def generateReport():
     if request.method == 'POST':
+        options = [0, 0, 0, 0]
         companyID = request.form['companyID']
-        #type = request.form['type']
-        type = request.form['options']
         groupBy = request.form['groupBy']
         startDate = request.form['startDate']
         endDate = request.form['endDate']
         
         todayDate = datetime.datetime.now()
 
+        if request.form.get('titlePage'):
+            options[0] = 1
+        if request.form.get('download'):
+            options[1] = 1
+        if request.form.get('learn'):
+            options[2] = 1
+        if request.form.get('value'):
+            options[3] = 1
+        
+        print(options)
+
         if not endDate:
             endDate = todayDate.strftime("%Y-%m-%d")
 
-        if not companyID or not type or not groupBy or not startDate:
+        if not companyID or not groupBy or not startDate:
             flash('Please make sure all fields are filled out!')
         else:
-            fileName = "Company" + companyID + type.capitalize() + "By" + groupBy.capitalize() + str(todayDate.date())
+            fileName = "Company" + companyID + "By" + groupBy.capitalize() + "From" + startDate + "To" + endDate
             url = ""
-            if (type == "download"):
-                url = generatePPTXDownloadData(companyID, fileName, groupBy)
-            # elif (type == "value"):
-            #     url = generatePPTXValueData(companyID, fileName, groupBy)
-            elif (type == "learn"):
-                 url = generatePPTXLearnData(companyID, fileName, groupBy, startDate, endDate)
+            url = generateFullReport(companyID, fileName, groupBy, startDate, endDate, options)
             if (url != "" or url != None):
                 return send_file(url)
             flash("Error: Could not generate report!")
 
-    return render_template('generateReport.html')
+    companies = getCompanies()
+    print(companies)
+    return render_template('generateReport.html', companies=companies)
 
 @app.route('/<int:id>/edit', methods=('GET', 'POST'))
 def edit(id):

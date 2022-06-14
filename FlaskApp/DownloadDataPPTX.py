@@ -162,3 +162,4 @@ def generatePPTXDownloadData(companyID, filename, groupBy):
 
 
 #generatePPTXDownloadData(92, "Test1", "level", "2022-06-01", "2022-06-14")
+print(str(logoLeft) + " " + str(logoTop) + " " + str(logoWidth) + " " + str(logoHeight))

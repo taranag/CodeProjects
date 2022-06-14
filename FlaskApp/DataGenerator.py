@@ -1,3 +1,4 @@
+import datetime
 import itertools
 import mysql.connector
 from mysql.connector import Error
@@ -10,16 +11,30 @@ host = 'localhost'
 user_name = 'taran'
 user_password = 'DESKTOP-RMV78RR'
 db_name = 'seekapp'
+myPath = "generated/"
+logoPath = "SeekLogo.png"
 max_table_size = 8
 
-myPath = "generated/"
 
-logoPath = "SeekLogo.png"
+logoLeft, logoTop, logoHeight, logoWidth = 8293608, 18288, 768096, 841248
 
-logoLeft = pptx.util.Inches(9.07)
-logoTop = pptx.util.Inches(0.02)
-logoHeight = pptx.util.Inches(0.84)
-logoWidth = pptx.util.Inches(0.92)
+def createTitleSlide(prs, title, startDate, endDate):
+    """
+    Creates a blank slide with a title and logo image
+    """
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+
+    titleShape = slide.shapes.title
+    titleShape.text = title
+
+    subtitleShape = slide.shapes[1]
+    subtitleShape.text = "From " + startDate + " to " + endDate
+
+    titleTextFrame = slide.shapes[0].text_frame
+    titleTextFrame.paragraphs[0].runs[0].font.bold = True
+
+    logo = slide.shapes.add_picture(logoPath, pptx.util.Inches(8.45), logoTop, pptx.util.Inches(1.54), pptx.util.Inches(1.42))
+    return slide
 
 
 def createBlankSlideWithTitle(prs, title):
@@ -40,16 +55,90 @@ def createBlankSlideWithTitle(prs, title):
     text_frame.paragraphs[0].runs[0].font.bold = True
 
     left = top = width = height = pptx.util.Inches(1)
-    pic = slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
+    slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
     return slide
+    
+def getCompanies():
+    connection = create_server_connection(host, user_name, user_password, db_name)
+    query = "SELECT id, name FROM company where status='active'"
+    result = execute_query(connection, query)
+    return result
 
-def createTable(slide, rows, cols, left, top, width, height):
+def createTableWithDownloadHeaders(slide, rows, cols, left, top, width, height):
     """
     Creates a table on a slide.
     """
     table = slide.shapes.add_table(rows, cols, left, top, width, height)
+    table.table.columns[2].width = Inches(2)
+    table.table.columns[0].width = Inches(2)
+    table.table.columns[3].width = Inches(1)
+    table.table.rows[0].cells[1].text = "Downloaded"
+    table.table.rows[0].cells[2].text = "Yet to Download"
+    table.table.rows[0].cells[3].text = "Total"
+    table.table.rows[0].cells[4].text = "% Download"
     return table.table
 
+def addDownloadData(prs, companyID, groupBy):
+    connection = create_server_connection(host, user_name, user_password, db_name)
+
+    # Get all non inactive employees in the company
+    # Query for appropriate columns and company ID
+    query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
+    # Attempt to execute_query and set result1 to the result of the query
+    result1 = execute_query(connection, query1)
+    # create dictionary of employee dictionaries
+    employeeDict = {}
+    for row in result1:
+        employeeDict[row[0]] = {groupBy: row[1], "status": row[2]}
+        # format: employeeDict[id] = [dept, status]
+    #print("Employee dictionary created with {} employees".format(len(employeeDict)))
+
+    # Create dictionary of unit dictionaries
+    activeInactiveByGroup = {}
+    for employee in employeeDict.values():
+        if(employee[groupBy] == None):
+            employee[groupBy] = "Other"
+        currGroup = employee[groupBy].capitalize()
+        if currGroup in activeInactiveByGroup:
+            if employee["status"] == "active":
+                activeInactiveByGroup[currGroup][0] += 1
+            else:
+                activeInactiveByGroup[currGroup][1] += 1
+        else:
+            if employee["status"] == "active":
+                activeInactiveByGroup[currGroup] = [1, 0]
+            else:
+                activeInactiveByGroup[currGroup] = [0, 1]
+
+    #print("Active/Inactive dictionary created with {} units".format(len(activeInactiveByGroup)))
+    #print(activeInactiveByGroup)
+
+    chunkCounter = 0
+    while (len(activeInactiveByGroup) > chunkCounter*max_table_size):
+        if chunkCounter == 0:
+            slide = createBlankSlideWithTitle(prs, "Download Status")
+        else:
+            slide = createBlankSlideWithTitle(prs, "Download Status Continued")
+        currChunk = dict(itertools.islice(activeInactiveByGroup.items(), chunkCounter*max_table_size, chunkCounter*max_table_size + max_table_size))
+        groupDownloadTable = createTableWithDownloadHeaders(slide, len(currChunk) + 2, 5, Inches(1), Inches(1.5), Inches(8), Inches(2))
+        currChunkKeys = list(currChunk.keys())
+        currChunkValues = list(currChunk.values())
+        for i in range (0, len(currChunk)):
+            groupDownloadTable.rows[i+1].cells[0].text = currChunkKeys[i]
+            groupDownloadTable.rows[i+1].cells[1].text = str(currChunkValues[i][0])
+            groupDownloadTable.rows[i+1].cells[2].text = str(currChunkValues[i][1])
+            groupDownloadTable.rows[i+1].cells[3].text = str(currChunkValues[i][0] + currChunkValues[i][1])
+            if currChunkValues[i][0] + currChunkValues[i][1] == 0:
+                groupDownloadTable.rows[i+1].cells[4].text = "0%"
+            else:
+                groupDownloadTable.rows[i+1].cells[4].text = str(round((currChunkValues[i][0])/(currChunkValues[i][0] + currChunkValues[i][1])*100)) + "%"
+        groupDownloadTable.rows[len(currChunk)+1].cells[0].text = "Total"
+        groupDownloadTable.rows[len(currChunk)+1].cells[1].text = str(sum(currChunkValues[i][0] for i in range(len(currChunk))))
+        groupDownloadTable.rows[len(currChunk)+1].cells[2].text = str(sum(currChunkValues[i][1] for i in range(len(currChunk))))
+        groupDownloadTable.rows[len(currChunk)+1].cells[3].text = str(sum(currChunkValues[i][0] + currChunkValues[i][1] for i in range(len(currChunk))))
+        groupDownloadTable.rows[len(currChunk)+1].cells[4].text = str(round((sum(currChunkValues[i][0] for i in range(len(currChunk))))/(sum(currChunkValues[i][0] + currChunkValues[i][1] for i in range(len(currChunk))))*100)) + "%"
+        
+        chunkCounter += 1
 def createTableWithLearnHeaders(slide, headers, rows, cols):
     """
     Creates a table on a slide.
@@ -68,8 +157,7 @@ def createTableWithLearnHeaders(slide, headers, rows, cols):
     table.table.rows[0].cells[len(headers)+2].text = "Total"
     return table.table
 
-def generatePPTXLearnData(companyID, filename, groupBy, startDate, endDate):
-    startTime = time.time()
+def addLearnData(prs, companyID, groupBy, startDate, endDate):
     # Connect to MySQL database
     connection = create_server_connection(host, user_name, user_password, db_name)
 
@@ -120,8 +208,6 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
         if group not in dataDict:
             dataDict[group] = {}
 
-
-    prs = pptx.Presentation()
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
         if chunkCounter == 0:
@@ -160,6 +246,15 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
 
         chunkCounter += 1
 
+def generateFullReport(companyID, filename, groupBy, startDate, endDate, options):
+    startTime = time.time()
+    prs = pptx.Presentation()
+    if (options[0] == 1):
+        titleSlide = createTitleSlide (prs, "Full Report", startDate, endDate)
+    if (options[1] == 1):
+        addDownloadData(prs, companyID, groupBy)
+    if (options[2] == 1):
+        addLearnData(prs, companyID, groupBy, startDate, endDate)
 
     saved = False
     try:
@@ -189,5 +284,4 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-
-#generatePPTXLearnData(92, "Learn5", "dept", "2019-01-01", "2019-12-31")
+#generateFullReport(51, "Test56", "dept", "2022-06-01", "2022-06-14", (1, 1, 1, 0))
