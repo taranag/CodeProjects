@@ -21,6 +21,16 @@ def get_post(post_id):
         abort(404)
     return post
 
+def get_report(report_id):
+    conn = get_db_connection()
+    report = conn.execute('SELECT * FROM reports WHERE id = ?',
+                        (report_id,)).fetchone()
+    conn.close()
+    if report is None:
+        abort(404)
+    return report
+
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'|+\xb5E\xb7\x1b\xef\xbf~H\x14\x96\x81\xd8q)'
@@ -33,6 +43,20 @@ def index():
     posts = conn.execute('SELECT * FROM posts').fetchall()
     conn.close()
     return render_template('index.html', posts=posts)
+
+@app.route('/reports')
+def reports():
+    conn = get_db_connection()
+    reports = conn.execute('SELECT * FROM reports').fetchall()
+    conn.close()
+    return render_template('reports.html', reports=reports)
+
+@app.route(prefix + '/reports/<int:report_id>')
+def report(report_id):
+    report = get_report(report_id)
+    return render_template('report.html', report=report)
+
+
 
 @app.route(prefix + '/<int:post_id>')
 def post(post_id):
@@ -71,17 +95,25 @@ def generateReport():
         
         todayDate = datetime.datetime.now()
 
+        optionsString = ''
+
         if request.form.get('titlePage'):
             options[0] = 1
+            optionsString += 'Title Page, '
         if request.form.get('download'):
             options[1] = 1
+            optionsString += 'Download, '
         if request.form.get('learn'):
             options[2] = 1
+            optionsString += 'Learn, '
         if request.form.get('value'):
             options[3] = 1
+            optionsString += 'Value, '
+
+        optionsString = optionsString[:-2]
         
         print(options)
-
+    
         if not endDate:
             endDate = todayDate.strftime("%Y-%m-%d")
 
@@ -92,11 +124,15 @@ def generateReport():
             url = ""
             url = generateFullReport(companyID, fileName, groupBy, startDate, endDate, options)
             if (url != "" or url != None):
+                conn = get_db_connection()
+                conn.execute('INSERT INTO reports (companyID, options, groupBy, startDate, endDate) VALUES (?, ?, ?, ?, ?)',
+                            (companyID, optionsString, groupBy, startDate, endDate))
+                conn.commit()
+                conn.close()
                 return send_file(url)
             flash("Error: Could not generate report!")
 
     companies = getCompanies()
-    print(companies)
     return render_template('generateReport.html', companies=companies)
 
 @app.route('/<int:id>/edit', methods=('GET', 'POST'))
