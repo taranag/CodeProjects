@@ -216,4 +216,4 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
 
-generatePPTXLearnData(51, "Learn5", "dept", "2022-06-01", "2022-06-14")
+# generatePPTXLearnData(51, "Learn5", "dept", "2022-06-01", "2022-06-14")

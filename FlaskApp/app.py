@@ -80,8 +80,6 @@ def create():
             conn.close()
             return redirect(url_for('index'))
 
-
-    
     return render_template('create.html')
 
 @app.route('/generateReport', methods=('GET', 'POST'))
