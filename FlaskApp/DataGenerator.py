@@ -6,6 +6,9 @@ import pptx
 from pptx.util import Pt
 from pptx.util import Inches
 from SQLTools import *
+import requests
+from pptx.chart.data import ChartData
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 
 host = 'localhost'
 user_name = 'taran'
@@ -19,6 +22,22 @@ max_table_width = 5
 
 
 logoLeft, logoTop, logoHeight, logoWidth = 8293608, 18288, 768096, 841248
+
+def iter_cells(table):
+        for row in table.table.rows:
+            for cell in row.cells:
+                yield cell
+
+def translateToEnglish(text):
+    if text is None:
+        return None
+    '''Detect the language of the text and translate it to english'''
+    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" + text
+    response = requests.get(url)
+    response = response.text
+    response = response.split("\"")
+    response = response[1]
+    return response
 
 def createTitleSlide(prs, title, startDate, endDate):
     """
@@ -39,7 +58,7 @@ def createTitleSlide(prs, title, startDate, endDate):
     return slide
 
 
-def createBlankSlideWithTitle(prs, title):
+def createBlankSlideWithTitle(prs, title, fontSize=44):
     """
     Creates a blank slide with a title and logo image
     """
@@ -53,7 +72,7 @@ def createBlankSlideWithTitle(prs, title):
             continue
         text_frame = shape.text_frame
 
-    text_frame.paragraphs[0].runs[0].font.size = Pt(44)
+    text_frame.paragraphs[0].runs[0].font.size = Pt(fontSize)
     text_frame.paragraphs[0].runs[0].font.bold = True
 
     left = top = width = height = pptx.util.Inches(1)
@@ -176,6 +195,134 @@ def createTableWithFinalLearnHeaders(slide, headers, rows, cols):
     table.table.rows[0].cells[len(headers)+2].text = "Total"
     return table.table
 
+def createValueTable(slide, answerDictByGroup, optionList):
+    if len(answerDictByGroup) > 4:
+        createDoubleValueTable(slide, answerDictByGroup, optionList)
+        return
+    left = Inches(3)
+    top = Inches(2.5)
+    width = Inches(7)
+    height = Inches(2)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+    
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+
+
+
+def createDoubleValueTable(slide, answerDictByGroup, optionList):
+    # Split dictionary into two dictionaries of equal length
+    answerDictByGroup1 = {}
+    answerDictByGroup2 = {}
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        if i % 2 == 0:
+            answerDictByGroup1[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
+        else:
+            answerDictByGroup2[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
+    # Create tables
+
+    answerDictByGroup = answerDictByGroup1
+
+    left = Inches(2.75)
+    top = Inches(1.5)
+    width = Inches(7)
+    height = Inches(2)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+    
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+
+    for cell in iter_cells(table):
+        for paragraph in cell.text_frame.paragraphs:
+            for run in paragraph.runs:
+                run.font.size = Pt(16)
+
+    answerDictByGroup = answerDictByGroup2
+
+    left = Inches(2.75)
+    top = Inches(4.25)
+    width = Inches(7)
+    height = Inches(2)
+
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+    
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+
+
+    for cell in iter_cells(table):
+        for paragraph in cell.text_frame.paragraphs:
+            for run in paragraph.runs:
+                run.font.size = Pt(16)
+
+
+
+def createValuePieChart(slide, answerDictByGroup, optionList):
+    chart_data = ChartData()
+    chart_data.categories = optionList
+    #chart_data.add_series('Response', answerDictByGroup)
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    numAnswersDict = {}
+    for i in range(len(optionList)):
+        numAnswersDict[optionList[i]] = sum(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]] for j in range(len(answerDictByGroup)))
+    answerPercentageDict = {}
+    for i in range(len(optionList)):
+        answerPercentageDict[optionList[i]] = numAnswersDict[optionList[i]]/sum(numAnswersDict.values())
+    chart_data.add_series('Response', answerPercentageDict.values())
+    if len(optionList) > 4:
+        height = Inches(3.5)
+    else:
+        height = Inches(3)
+    pieChart = slide.shapes.add_chart(XL_CHART_TYPE.PIE, Inches(0), Inches(2.5), Inches(3), height, chart_data).chart
+    pieChart.chart_style = 26
+    pieChart.has_legend = True
+    pieChart.legend.position = pptx.enum.chart.XL_LEGEND_POSITION.BOTTOM
+    pieChart.legend.include_in_layout = False
+    pieChart.plots[0].has_data_labels = True
+    data_labels = pieChart.plots[0].data_labels
+    data_labels.number_format = '0%'
+    data_labels.position = pptx.enum.chart.XL_LABEL_POSITION.OUTSIDE_END
+
+
 def addLearnData(prs, companyID, groupBy, startDate, endDate):
     # Connect to MySQL database
     connection = create_server_connection(host, user_name, user_password, db_name)
@@ -291,6 +438,72 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
 
         chunkCounter += 1
 
+def addValueData(prs, companyID, groupBy, startDate, endDate):
+    # Connect to MySQL database
+    connection = create_server_connection(host, user_name, user_password, db_name)
+
+    # Get all non inactive employees in the company
+    # Query for appropriate columns and company ID
+    query1 = "select id,question,option1,option2,option3,option4,option5 from surveyquestions where compid = {} and schedule_time >= '{}' and schedule_time <= '{}' and scheduled_count<>0;".format(companyID, startDate, endDate)
+    result1 = execute_query(connection, query1)
+
+    for row1 in result1:
+        questionID = row1[0]
+        question = row1[1]
+        question = translateToEnglish(question)
+        # check if question is null
+        if question is None:
+            tempQuery = "select content_file from surveyquestions where id = {}".format(questionID)
+            tempResult = execute_query(connection, tempQuery)
+            question = tempResult[0][0]
+        query2 = "select e.{},n.answer from notifications n left join employee e on n.empId=e.id where message_id={} and answer is not null;".format(groupBy, questionID)
+        result2 = execute_queryNoTime(connection, query2)
+
+        query3 = "select {},count(*) from employee where companyId={} and status='active' group by {};".format(groupBy, companyID, groupBy)
+        result3 = execute_queryNoTime(connection, query3)
+        employeeDict = {}
+        for row3 in result3:
+            group = row3[0]
+            if group == None:
+                group = "Other"
+            if group == "":
+                group = "Other"
+            group = group.capitalize()
+            if group in employeeDict:
+                employeeDict[group] += row3[1]
+            else:
+                employeeDict[group] = row3[1]
+        
+        optionList = []
+        for i in range(2,7):
+            if row1[i] != None:
+                optionList.append(row1[i])
+
+        answerDictByGroup = {}
+        for group in employeeDict:
+            answerDictByGroup[group] = {}
+            for option in optionList:
+                answerDictByGroup[group][option] = 0
+        
+        for row2 in result2:
+            try:
+                answerDictByGroup[row2[0].capitalize()][row2[1]] += 1
+            except:
+                print("Error: " + row2[0] + " " + row2[1])
+                print(answerDictByGroup)
+    
+        #print("Answers dictionary created with {} groups".format(len(answerDictByGroup)))
+
+        # Create a new slide for each question
+        print(question)
+        slide = createBlankSlideWithTitle(prs, question, 25)
+
+        # Create a table for the question
+        createValueTable(slide, answerDictByGroup, optionList)
+        createValuePieChart(slide, answerDictByGroup, optionList)
+
+
+
 def generateFullReport(companyID, filename, groupBy, startDate, endDate, options):
     startTime = time.time()
     prs = pptx.Presentation()
@@ -300,6 +513,8 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
         addDownloadData(prs, companyID, groupBy)
     if (options[2] == 1):
         addLearnData(prs, companyID, groupBy, startDate, endDate)
+    if (options[3] == 1):
+        addValueData(prs, companyID, groupBy, startDate, endDate)
 
     saved = False
     try:
