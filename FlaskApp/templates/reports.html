@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1 class="text-center">{% block title %} Reports Generated {% endblock %}</h1>
+    {% for report in reports %}
+        <a href="{{ url_for('report', report_id=report['id']) }}">
+            <h2>Company {{ report['companyID'] }} {{ report['options'] }} by {{ report['groupBy'] }} </h2>
+        </a>
+        <span class="badge badge-primary">{{ report['created'] }}</span>
+        <hr>
+    {% endfor %}
+{% endblock %}

@@ -6,3 +6,15 @@ CREATE TABLE posts (
     title TEXT NOT NULL,
     content TEXT NOT NULL
 );
+
+DROP TABLE IF EXISTS reports;
+
+CREATE TABLE reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    companyID INTEGER NOT NULL,
+    options TEXT NOT NULL,
+    groupBy TEXT NOT NULL,
+    startDate DATE NOT NULL,
+    endDate DATE NOT NULL
+);

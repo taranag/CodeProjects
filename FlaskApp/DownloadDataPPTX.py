@@ -12,7 +12,6 @@ user_password = 'DESKTOP-RMV78RR'
 db_name = 'seekapp'
 max_table_size = 8
 
-#myPath = "/Users/Taran Agnihotri/Desktop/CodeProjects/FlaskApp/"
 myPath = "generated/"
 
 logoPath = "/Users/Taran Agnihotri/Desktop/CodeProjects/FlaskApp/SeekLogo.png"
@@ -156,10 +155,7 @@ def generatePPTXDownloadData(companyID, filename, groupBy):
         if(number == 10):
             print("File could not be saved.")
             return None
-            break
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-
 #generatePPTXDownloadData(92, "Test1", "level", "2022-06-01", "2022-06-14")
-print(str(logoLeft) + " " + str(logoTop) + " " + str(logoWidth) + " " + str(logoHeight))
