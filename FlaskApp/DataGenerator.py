@@ -226,6 +226,8 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     for group in totalEmployeesByGroup:
         if group not in dataDict:
             dataDict[group] = {}
+    totalEmployeesLearningByGroup = {}
+    totalEmployeesLearningByGroup["total"] = 0
 
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
@@ -253,8 +255,14 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                         totalLearning += currChunk[currChunkKeys[i]][currCourseList[j]]
                     else:
                         groupLearnTable.rows[i+1].cells[j+1].text = "0"
+                if currChunkKeys[i] in totalEmployeesLearningByGroup:
+                    totalEmployeesLearningByGroup[currChunkKeys[i]] += totalLearning
+                else:
+                    totalEmployeesLearningByGroup[currChunkKeys[i]] = totalLearning
+                totalEmployeesLearningByGroup["total"] += totalLearning
                 if len(currCourseList) < (max_table_width - 1):
-                    groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalLearning)
+
+                    groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalEmployeesLearningByGroup[currChunkKeys[i]])
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+2].text = str(totalEmployeesByGroup[currChunkKeys[i]])
             groupLearnTable.rows[len(currChunkKeys)+1].cells[0].text = "Total"
 
@@ -266,10 +274,19 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                         totalLearning += currChunk[currChunkKeys[j]][currCourseList[i]]
                 companyLearning += totalLearning
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
+            
+            currLearning = 0
+            for i in range (0, len(currChunkKeys)):
+                currLearning += totalEmployeesLearningByGroup[currChunkKeys[i]]
 
+            currEmployeeCount = 0
+            for i in range (0, len(currChunkKeys)):
+                currEmployeeCount += totalEmployeesByGroup[currChunkKeys[i]]
+
+            print(companyLearning)
             if len(currCourseList) < (max_table_width - 1):
-                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(sum(totalEmployeesByGroup.values()) - companyLearning)
-                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(sum(totalEmployeesByGroup.values()))
+                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(currEmployeeCount - currLearning)
+                groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(currEmployeeCount)
             sliceCounter += 1
 
         chunkCounter += 1
