@@ -31,3 +31,13 @@ def execute_query(connection, query):
 
     result = cursor.fetchall()
     return result
+
+def execute_queryNoTime(connection, query):
+    cursor = connection.cursor(buffered=True)
+    try:
+        cursor.execute(query)
+        connection.commit()
+    except Error as err:
+        print(f"Error: '{err}'")
+    result = cursor.fetchall()
+    return result
