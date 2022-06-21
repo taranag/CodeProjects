@@ -4,4 +4,20 @@
     <h2 class="text-center">{% block title %} Company {{ report['companyID'] }} {{ report['options'] }} by {{ report['groupBy'] }} {% endblock %}</h2>
     <span class="badge badge-primary">{{ report['created'] }}</span>
     <p>From {{ report['startDate'] }} to {{ report['endDate'] }}</p>
+    <!-- <p>/{{ report['fileURL'] }} </p> -->
+
+    <!-- <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=https://github.com/taranag/CodeProjects/raw/main/FlaskApp/generated/Company1ByLevelFrom2022-06-01To2022-06-14%20(1).pptx" width='80%' height='565px' frameborder='0'> </iframe> -->
+
+    <!-- <image src="{{ url_for('static', filename=report['fileURL']) }}"></image> -->
+    <form method="post">
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Download</button>
+        </div>
+    </form>
+    <form action="{{ url_for('deleteReport', id=report['id']) }}" method="POST">
+        <input type="submit" value="Delete Report"
+                class="btn btn-danger btn-sm"
+                onclick="return confirm('Are you sure you want to delete this report?')">
+    </form>
+    
 {% endblock %}

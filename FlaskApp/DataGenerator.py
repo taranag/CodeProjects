@@ -14,7 +14,7 @@ host = 'localhost'
 user_name = 'taran'
 user_password = 'DESKTOP-RMV78RR'
 db_name = 'seekapp'
-myPath = "generated/"
+myPath = "static/generated/"
 logoPath = "SeekLogo.png"
 max_table_size = 8
 max_table_width = 5
@@ -224,6 +224,118 @@ def createValueTable(slide, answerDictByGroup, optionList):
     for j in range(len(answerDictByGroup)):
         table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
+def createPercentValueTable(slide, answerDictByGroup, optionList):
+    if len(answerDictByGroup) > 4:
+        createDoublePercentValueTable(slide, answerDictByGroup, optionList)
+        return
+    left = Inches(3)
+    top = Inches(2.5)
+    width = Inches(6.75)
+    height = Inches(2)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            try:
+                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            except ZeroDivisionError:
+                table.table.rows[i+1].cells[j+1].text = "0%"
+
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        try: 
+            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+        except ZeroDivisionError:
+            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
+
+def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
+    # Split dictionary into two dictionaries of equal length
+    answerDictByGroup1 = {}
+    answerDictByGroup2 = {}
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        if i % 2 == 0:
+            answerDictByGroup1[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
+        else:
+            answerDictByGroup2[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
+    # Create tables
+
+    answerDictByGroup = answerDictByGroup1
+
+    left = Inches(2.75)
+    top = Inches(1.5)
+    width = Inches(6.75)
+    height = Inches(2)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            try:
+                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            except ZeroDivisionError:
+                table.table.rows[i+1].cells[j+1].text = "0%"
+            
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        try:
+            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+        except ZeroDivisionError:
+            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
+    for cell in iter_cells(table):
+        for paragraph in cell.text_frame.paragraphs:
+            for run in paragraph.runs:
+                run.font.size = Pt(16)
+
+    answerDictByGroup = answerDictByGroup2
+
+    left = Inches(2.75)
+    top = Inches(4.25)
+    width = Inches(7)
+    height = Inches(2)
+
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+
+    table.table.rows[0].cells[0].text = "Response"
+    answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    answerDictByGroupValueList = list(answerDictByGroup.values())
+    for i in range(len(answerDictByGroup)):
+        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+
+    for i in range(len(optionList)):
+        table.table.rows[i+1].cells[0].text = optionList[i]
+        for j in range(len(answerDictByGroup)):
+            try:
+                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            except ZeroDivisionError:
+                table.table.rows[i+1].cells[j+1].text = "0%"
+            
+    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    for j in range(len(answerDictByGroup)):
+        try:
+            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+        except ZeroDivisionError:
+            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
+    
+    for cell in iter_cells(table):
+        for paragraph in cell.text_frame.paragraphs:
+            for run in paragraph.runs:
+                run.font.size = Pt(16)
 
 
 def createDoubleValueTable(slide, answerDictByGroup, optionList):
@@ -302,7 +414,14 @@ def createDoubleValueTable(slide, answerDictByGroup, optionList):
 
 def createValuePieChart(slide, answerDictByGroup, optionList):
     chart_data = ChartData()
-    chart_data.categories = optionList
+    chartCategoriesList = []
+    for i in range(len(optionList)):
+        if len(optionList[i]) > 20:
+            chartCategoriesList.append(optionList[i][:17] + "...")
+        else:
+            chartCategoriesList.append(optionList[i])
+        
+    chart_data.categories = chartCategoriesList
     #chart_data.add_series('Response', answerDictByGroup)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     numAnswersDict = {}
@@ -336,8 +455,6 @@ def addLearnData(prs, companyID, groupBy, startDate, endDate):
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
-    print(startDate)
-    print(endDate)
     query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
     query2 = '''select c.display_name,e.{},count(*) from score s
 left join employee e on e.id = s.userid
@@ -437,7 +554,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
             for i in range (0, len(currChunkKeys)):
                 currEmployeeCount += totalEmployeesByGroup[currChunkKeys[i]]
 
-            print(companyLearning)
+
             if len(currCourseList) < (max_table_width):
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(currEmployeeCount - currLearning)
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(currEmployeeCount)
@@ -445,7 +562,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
 
         chunkCounter += 1
 
-def addValueData(prs, companyID, groupBy, startDate, endDate):
+def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=False):
     # Connect to MySQL database
     connection = create_server_connection(host, user_name, user_password, db_name)
 
@@ -534,7 +651,10 @@ def addValueData(prs, companyID, groupBy, startDate, endDate):
         slide = createBlankSlideWithTitle(prs, question, 25)
 
         # Create a table for the question
-        createValueTable(slide, answerDictByGroup, optionList)
+        if percentage:
+            createPercentValueTable(slide, answerDictByGroup, optionList)
+        else:
+            createValueTable(slide, answerDictByGroup, optionList)
         # Create a pie chart for the question
         createValuePieChart(slide, answerDictByGroup, optionList)
 
@@ -552,16 +672,19 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
                 titleText += "download data, "
             if options[2] == 1:
                 titleText += "learn data, "
-            if options[3] == 1:
+            if options[3] == 1 or options[3] == 2:
                 titleText += "value data, "
             titleText = titleText[:-2]
             titleSlide = createTitleSlide (prs, titleText, startDate, endDate)
-    if (options[1] == 1):
+    if (options[1] != 0):
         addDownloadData(prs, companyID, groupBy)
-    if (options[2] == 1):
+    if (options[2] != 0):
         addLearnData(prs, companyID, groupBy, startDate, endDate)
-    if (options[3] == 1):
-        addValueData(prs, companyID, groupBy, startDate, endDate)
+    if (options[3] != 0):
+        if options[3] == 1:
+            addValueData(prs, companyID, groupBy, startDate, endDate, False)
+        elif options[3] == 2:
+            addValueData(prs, companyID, groupBy, startDate, endDate, True)
 
     saved = False
     try:

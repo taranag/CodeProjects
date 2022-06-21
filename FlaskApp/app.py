@@ -1,6 +1,7 @@
 import datetime
+import os
 import sqlite3
-from flask import Flask, jsonify, render_template, request, send_file, url_for, flash, redirect
+from flask import Flask, after_this_request, jsonify, render_template, request, send_file, url_for, flash, redirect
 from werkzeug.exceptions import abort
 from DownloadDataPPTX import *
 from LearnDataPPTX import *
@@ -47,13 +48,19 @@ def index():
 @app.route('/reports')
 def reports():
     conn = get_db_connection()
-    reports = conn.execute('SELECT * FROM reports order by date desc').fetchall()
+    reports = conn.execute('SELECT * FROM reports order by id desc').fetchall()
     conn.close()
     return render_template('reports.html', reports=reports)
 
-@app.route(prefix + '/reports/<int:report_id>')
+@app.route(prefix + '/reports/<int:report_id>', methods=('GET', 'POST'))
 def report(report_id):
     report = get_report(report_id)
+    if request.method == 'POST':
+        print(report['fileURL'])
+        if report['fileURL'] is None or report['fileURL'] == '':
+            flash("This report was generated prior to the addition of the fileURL column.")
+        else:
+            return send_file(report['fileURL'])
     return render_template('report.html', report=report)
 
 
@@ -106,7 +113,12 @@ def generateReport():
             optionsString += 'Learn, '
         if request.form.get('value'):
             options[3] = 1
-            optionsString += 'Value, '
+            if request.form.get('valuePercent'):
+                optionsString += 'Value (%), '
+                options[3] = 2
+            else:
+                optionsString += 'Value, '
+
 
         optionsString = optionsString[:-2]
         
@@ -123,8 +135,8 @@ def generateReport():
             url = generateFullReport(companyID, fileName, groupBy, startDate, endDate, options)
             if (url != "" or url != None):
                 conn = get_db_connection()
-                conn.execute('INSERT INTO reports (companyID, options, groupBy, startDate, endDate) VALUES (?, ?, ?, ?, ?)',
-                            (companyID, optionsString, groupBy, startDate, endDate))
+                conn.execute('INSERT INTO reports (companyID, options, groupBy, startDate, endDate, fileURL) VALUES (?, ?, ?, ?, ?, ?)',
+                            (companyID, optionsString, groupBy, startDate, endDate, url))
                 conn.commit()
                 conn.close()
                 return send_file(url)
@@ -163,6 +175,23 @@ def delete(id):
     conn.close()
     flash('"{}" was successfully deleted!'.format(post['title']))
     return redirect(url_for('index'))
+
+@app.route('/reports/<int:id>/delete', methods=('POST',))
+def deleteReport(id):
+    report = get_report(id)
+    conn = get_db_connection()
+    conn.execute('DELETE FROM reports WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    flash('"{}" was successfully deleted!'.format(report['id']))
+    @after_this_request
+    def remove_file(response):
+        try:
+            os.remove(report['fileURL'])
+        except Exception as error:
+            app.logger.error("Error removing or closing downloaded file handle", error)
+        return response
+    return redirect(url_for('reports'))
 
 @app.route('/get_number')
 def get_number():
