@@ -47,7 +47,7 @@ def index():
 @app.route('/reports')
 def reports():
     conn = get_db_connection()
-    reports = conn.execute('SELECT * FROM reports').fetchall()
+    reports = conn.execute('SELECT * FROM reports order by date desc').fetchall()
     conn.close()
     return render_template('reports.html', reports=reports)
 
