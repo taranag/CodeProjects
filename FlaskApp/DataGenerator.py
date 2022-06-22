@@ -57,7 +57,7 @@ def addDownloadData(prs, companyID, groupBy, connection = None):
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
     query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
-    # results in form (id, groupBy, status)
+    # Results in form (id, groupBy, status)
 
     # Attempt to execute query and set result1 to the result of the query
     result1 = execute_queryNoTime(connection, query1)
@@ -499,59 +499,61 @@ def createValuePieChart(slide, answerDictByGroup, optionList):
 
 
 def addLearnData(prs, companyID, groupBy, startDate, endDate, connection = None):
+    '''Add learn data to the given presentation.'''
+
+    # If connection is not given, create a new connection
     if connection is None:
         connection = create_server_connection(host, user_name, user_password, db_name)
 
-    # Get all non inactive employees in the company
-    # Query for appropriate columns and company ID
-    query1 = "select id,{},status from employee where status ='active' and companyID={}".format(groupBy, companyID)
+    # Get all active employees in the company
+    query1 = "select {},count(*) from employee where status ='active' and companyID={} group by {};".format(groupBy, companyID, groupBy)
+    # Results in form (id, groupBy, status)
+    # Get course data with group and count
     query2 = '''select c.display_name,e.{},count(*) from score s
 left join employee e on e.id = s.userid
 left join course c on c.course_id = s.course_id
 where s.userid in (select id from employee where companyId = {})
 and s.date >='{}' and s.date <='{}'
 group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(endDate), groupBy)
+    # Results in form (course_name, groupBy, count)
 
-    # Attempt to execute_query and set result1 to the result of the query
+    # Attempt to execute queries and get results
     result1 = execute_queryNoTime(connection, query1)
     result2 = execute_queryNoTime(connection, query2)
-    # create dictionary of employee dictionaries
-    employeeDict = {}
-    for row in result1:
-        employeeDict[row[0]] = {groupBy: row[1], "status": row[2]}
-        # format: employeeDict[id] = [dept, status]
-    # print("Employee dictionary created with {} employees".format(len(employeeDict)))
-
 
     totalEmployeesByGroup = {}
-    for employee in employeeDict.values():
+    for group in result1:
         try:
-            currGroup = employee[groupBy].capitalize()
+            currGroup = group[0].capitalize()
         except:
             currGroup = "Other"
         if currGroup in totalEmployeesByGroup:
-            totalEmployeesByGroup[currGroup] += 1
+            totalEmployeesByGroup[currGroup] += group[1]
         else:
-            totalEmployeesByGroup[currGroup] = 1
+            totalEmployeesByGroup[currGroup] = group[1]
 
-        
-    print("Total employees by group: {}".format(totalEmployeesByGroup))
+    # Test code for totalEmployeesByGroup   
+    # print("Total employees by group: {}".format(totalEmployeesByGroup))
     
     dataDict = {}
     courseList = []
     for row in result2:
+        try:
+            currGroup = row[1].capitalize()
+        except:
+            currGroup = "Other"
         if row[0] not in courseList:
             courseList.append(row[0])
-        if row[1] in dataDict:
-            dataDict[row[1].capitalize()][row[0]] = row[2]
+        if currGroup in dataDict:
+            dataDict[currGroup][row[0]] = row[2]
         else:
-            dataDict[row[1].capitalize()] = {row[0]: row[2]}
+            dataDict[currGroup] = {row[0]: row[2]}
 
     for group in totalEmployeesByGroup:
         if group not in dataDict:
             dataDict[group] = {}
     totalEmployeesLearningByGroup = {}
-    totalEmployeesLearningByGroup["total"] = 0
+    #totalEmployeesLearningByGroup["total"] = 0
 
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
@@ -583,7 +585,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                     totalEmployeesLearningByGroup[currChunkKeys[i]] += totalLearning
                 else:
                     totalEmployeesLearningByGroup[currChunkKeys[i]] = totalLearning
-                totalEmployeesLearningByGroup["total"] += totalLearning
+                #totalEmployeesLearningByGroup["total"] += totalLearning
                 if len(currCourseList) < (max_table_width):
 
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalEmployeesLearningByGroup[currChunkKeys[i]])
@@ -614,6 +616,9 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
         chunkCounter += 1
 
 def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, connection = None):
+    '''Add value data to the given presentation.'''
+
+    # If no connection is given, create a new one
     if connection is None:
         connection = create_server_connection(host, user_name, user_password, db_name)
 
@@ -748,6 +753,7 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
     if (options[3] != 0):
         addValueData(prs, companyID, groupBy, startDate, endDate, options[3], connection)
         print("Value data added after {} seconds".format(time.time() - startTime))
+
 
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
     saved = False
