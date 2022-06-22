@@ -7,6 +7,9 @@
             <h2>Company {{ report['companyID'] }} {{ report['options'] }} by {{ report['groupBy'] }} </h2>
         </a>
         <span class="badge badge-primary">{{ report['created'] }}</span>
+        <!-- <a href="{{ url_for('deleteReport', id=report['id']) }}">
+            <span class="badge badge-warning">Delete</span>
+        </a> -->
         <hr>
     {% endfor %}
 {% endblock %}

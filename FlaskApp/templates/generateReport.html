@@ -18,20 +18,23 @@
             {% endfor %}
         </select>
     </div>
-    <!---
+
     <div class="form-group">
-        <label for="type">Type of Report</label>
-        <input type="text" name="type"
-               placeholder="download or learn or value" class="form-control"
-               value="{{ request.form['type'] }}"></input>
-    </div>
-    -->
-    <div class="form-group">
+        <script language="JavaScript">
+            function toggle(source) {
+                var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i] != source)
+                        checkboxes[i].checked = source.checked;
+                }
+            }
+        </script>
         <label for="options">Options*</label> <br>
         <input type="checkbox" name="titlePage" id="titlePage" value="titlePage"> Title Page </input><br>
         <input type="checkbox" name="download" id="download" value="download"> Download </input><br>
         <input type="checkbox" name="learn" id="learn" value="learn"> Learn </input><br>
-        <input type="checkbox" name="value" id="value" value="value">  Value </input><br>
+        <input type="checkbox" name="value" id="value" value="value">  Value </input> <input type="checkbox" name="valuePercent" id="valuePercent" value="valuePercent">  %? </input> <br>
+        <input type="checkbox" name="all" id="all" value="all" onclick="toggle(this)"> All </input><br>
     </div>
 
     <div class="form-group">

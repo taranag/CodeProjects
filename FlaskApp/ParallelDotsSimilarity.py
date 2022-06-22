@@ -8,6 +8,7 @@ def getPDSimilarity(text1, text2):
     }
 
     response = requests.post('https://apis.paralleldots.com/v4/similarity', files=files)
+    print(response.text)
     return response.json()["similarity_score"]
 
-#print(getPDSimilarity('Do you like me?', 'Do you hate me?'))
+print(getPDSimilarity('I understand that maintaining diligence in the workplace is very important to maintain the accuracy of my work.', 'I understand that diligence in the workplace is very important to maintain my work accuracy.'))
