@@ -1,7 +1,6 @@
 import datetime
 import itertools
-import mysql.connector
-from mysql.connector import Error
+from matplotlib.pyplot import connect
 import pptx
 from pptx.util import Pt
 from pptx.util import Inches
@@ -9,6 +8,7 @@ from SQLTools import *
 import requests
 from pptx.chart.data import ChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from PPTXTools import *
 
 host = 'localhost'
 user_name = 'taran'
@@ -20,67 +20,18 @@ max_table_size = 8
 max_table_width = 5
 
 
-
 logoLeft, logoTop, logoHeight, logoWidth = 8293608, 18288, 768096, 841248
 
-def iter_cells(table):
-        for row in table.table.rows:
-            for cell in row.cells:
-                yield cell
 
-def translateToEnglishDos(text):
+def fastTranslateToEnglish(session, text):
     '''Detect the language of the text and translate it to english'''
     url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" + text
-    response = requests.get(url)
+    response = session.get(url)
     response = response.json()
     returnString = ""
     for item in response[0]:
         returnString += item[0]
     return returnString
-
-def createTitleSlide(prs, title, startDate, endDate):
-    """
-    Creates a blank slide with a title and logo image
-    """
-    slide = prs.slides.add_slide(prs.slide_layouts[0])
-
-    title = title.replace("\n", " ")
-
-    titleShape = slide.shapes.title
-    titleShape.text = title
-
-    subtitleShape = slide.shapes[1]
-    subtitleShape.text = "From " + startDate + " to " + endDate
-
-    titleTextFrame = slide.shapes[0].text_frame
-    titleTextFrame.paragraphs[0].runs[0].font.bold = True
-
-    logo = slide.shapes.add_picture(logoPath, pptx.util.Inches(8.45), logoTop, pptx.util.Inches(1.54), pptx.util.Inches(1.42))
-    return slide
-
-
-def createBlankSlideWithTitle(prs, title, fontSize=44):
-    """
-    Creates a blank slide with a title and logo image
-    """
-    slide = prs.slides.add_slide(prs.slide_layouts[5])
-
-    title = title.replace("\r\n", " ")
-
-    titleShape = slide.shapes.title
-    titleShape.text = title
-
-    for shape in slide.shapes:
-        if not shape.has_text_frame:
-            continue
-        text_frame = shape.text_frame
-
-    text_frame.paragraphs[0].runs[0].font.size = Pt(fontSize)
-    text_frame.paragraphs[0].runs[0].font.bold = True
-
-    left = top = width = height = pptx.util.Inches(1)
-    slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
-    return slide
     
 def getCompanies():
     connection = create_server_connection(host, user_name, user_password, db_name)
@@ -88,22 +39,9 @@ def getCompanies():
     result = execute_query(connection, query)
     return result
 
-def createTableWithDownloadHeaders(slide, rows, cols, left, top, width, height):
-    """
-    Creates a table on a slide.
-    """
-    table = slide.shapes.add_table(rows, cols, left, top, width, height)
-    table.table.columns[2].width = Inches(2)
-    table.table.columns[0].width = Inches(2)
-    table.table.columns[3].width = Inches(1)
-    table.table.rows[0].cells[1].text = "Downloaded"
-    table.table.rows[0].cells[2].text = "Yet to Download"
-    table.table.rows[0].cells[3].text = "Total"
-    table.table.rows[0].cells[4].text = "% Download"
-    return table.table
-
-def addDownloadData(prs, companyID, groupBy):
-    connection = create_server_connection(host, user_name, user_password, db_name)
+def addDownloadData(prs, companyID, groupBy, connection = None):
+    if connection is None:
+        connection = create_server_connection(host, user_name, user_password, db_name)
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
@@ -164,40 +102,9 @@ def addDownloadData(prs, companyID, groupBy):
         
         chunkCounter += 1
         
-def createTableWithLearnHeaders(slide, headers, rows, cols):
-    """
-    Creates a table on a slide.
-    """
-    left = Inches(.2)
-    top = Inches(1.5)
-    width = Inches(9.6)
-    height = Inches(2)
-    table = slide.shapes.add_table(rows, cols, left, top, width, height)
-    # table.table.columns[2].width = Inches(2)
-    # table.table.columns[0].width = Inches(2)
-    #table.table.columns[cols-1].width = Inches(1)
-    for i in range(len(headers)):
-        table.table.rows[0].cells[i+1].text = headers[i]
-    return table.table
 
-def createTableWithFinalLearnHeaders(slide, headers, rows, cols):
-    """
-    Creates a table on a slide.
-    """
-    left = Inches(.2)
-    top = Inches(1.5)
-    width = Inches(10)
-    height = Inches(2)
-    table = slide.shapes.add_table(rows, cols, left, top, width, height)
-    # table.table.columns[2].width = Inches(2)
-    # table.table.columns[0].width = Inches(2)
-    #table.table.columns[cols-1].width = Inches(1)
-    for i in range(len(headers)):
-        table.table.rows[0].cells[i+1].text = headers[i]
-    table.table.rows[0].cells[len(headers)+1].text = "Not on Learn"
-    table.table.rows[0].cells[len(headers)+2].text = "Total"
-    table.table.columns[len(headers)+2].width = Inches(1)
-    return table.table
+
+
 
 def createValueTable(slide, answerDictByGroup, optionList):
     if len(answerDictByGroup) > 4:
@@ -207,22 +114,22 @@ def createValueTable(slide, answerDictByGroup, optionList):
     top = Inches(2.5)
     width = Inches(6.75)
     height = Inches(2)
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table.rows[0].cells[0].text = "Response"
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
-            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+            table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
-        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+        table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
 def createPercentValueTable(slide, answerDictByGroup, optionList):
     if len(answerDictByGroup) > 4:
@@ -232,28 +139,28 @@ def createPercentValueTable(slide, answerDictByGroup, optionList):
     top = Inches(2.5)
     width = Inches(6.75)
     height = Inches(2)
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table.rows[0].cells[0].text = "Response"
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
             try:
-                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+                table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
-                table.table.rows[i+1].cells[j+1].text = "0%"
+                table.rows[i+1].cells[j+1].text = "0%"
 
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
         try: 
-            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
-            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
+            table.rows[len(optionList)+1].cells[j+1].text = "0%"
 
 def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     # Split dictionary into two dictionaries of equal length
@@ -266,7 +173,7 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
             answerDictByGroup1[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
         else:
             answerDictByGroup2[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
-    # Create tables
+
 
     answerDictByGroup = answerDictByGroup1
 
@@ -274,33 +181,31 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     top = Inches(1.5)
     width = Inches(6.75)
     height = Inches(2)
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table.rows[0].cells[0].text = "Response"
 
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
             try:
-                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+                table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
-                table.table.rows[i+1].cells[j+1].text = "0%"
+                table.rows[i+1].cells[j+1].text = "0%"
             
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
         try:
-            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
-            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
-    for cell in iter_cells(table):
-        for paragraph in cell.text_frame.paragraphs:
-            for run in paragraph.runs:
-                run.font.size = Pt(16)
+            table.rows[len(optionList)+1].cells[j+1].text = "0%"
+
+    setTableFontSize(table, 16)
 
     answerDictByGroup = answerDictByGroup2
 
@@ -309,33 +214,30 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     width = Inches(7)
     height = Inches(2)
 
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table2 = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table2.rows[0].cells[0].text = "Response"
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table2.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table2.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
             try:
-                table.table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+                table2.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
-                table.table.rows[i+1].cells[j+1].text = "0%"
+                table2.rows[i+1].cells[j+1].text = "0%"
             
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table2.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
         try:
-            table.table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
+            table2.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
-            table.table.rows[len(optionList)+1].cells[j+1].text = "0%"
+            table2.rows[len(optionList)+1].cells[j+1].text = "0%"
     
-    for cell in iter_cells(table):
-        for paragraph in cell.text_frame.paragraphs:
-            for run in paragraph.runs:
-                run.font.size = Pt(16)
+    setTableFontSize(table2, 16)
 
 
 def createDoubleValueTable(slide, answerDictByGroup, optionList):
@@ -357,28 +259,25 @@ def createDoubleValueTable(slide, answerDictByGroup, optionList):
     top = Inches(1.5)
     width = Inches(6.75)
     height = Inches(2)
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table.rows[0].cells[0].text = "Response"
 
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
-            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+            table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
-        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+        table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
-    for cell in iter_cells(table):
-        for paragraph in cell.text_frame.paragraphs:
-            for run in paragraph.runs:
-                run.font.size = Pt(16)
+    setTableFontSize(table, 16)
 
     answerDictByGroup = answerDictByGroup2
 
@@ -387,28 +286,25 @@ def createDoubleValueTable(slide, answerDictByGroup, optionList):
     width = Inches(7)
     height = Inches(2)
 
-    table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height)
+    table2 = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
-    table.table.rows[0].cells[0].text = "Response"
+    table2.rows[0].cells[0].text = "Response"
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
     for i in range(len(answerDictByGroup)):
-        table.table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
+        table2.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
     for i in range(len(optionList)):
-        table.table.rows[i+1].cells[0].text = optionList[i]
+        table2.rows[i+1].cells[0].text = optionList[i]
         for j in range(len(answerDictByGroup)):
-            table.table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
+            table2.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
-    table.table.rows[len(optionList)+1].cells[0].text = "Total"
+    table2.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
-        table.table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
+        table2.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
 
-    for cell in iter_cells(table):
-        for paragraph in cell.text_frame.paragraphs:
-            for run in paragraph.runs:
-                run.font.size = Pt(16)
+    setTableFontSize(table2, 16)
 
 
 
@@ -449,9 +345,9 @@ def createValuePieChart(slide, answerDictByGroup, optionList):
     data_labels.position = pptx.enum.chart.XL_LABEL_POSITION.OUTSIDE_END
 
 
-def addLearnData(prs, companyID, groupBy, startDate, endDate):
-    # Connect to MySQL database
-    connection = create_server_connection(host, user_name, user_password, db_name)
+def addLearnData(prs, companyID, groupBy, startDate, endDate, connection = None):
+    if connection is None:
+        connection = create_server_connection(host, user_name, user_password, db_name)
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
@@ -471,14 +367,18 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     for row in result1:
         employeeDict[row[0]] = {groupBy: row[1], "status": row[2]}
         # format: employeeDict[id] = [dept, status]
-    print("Employee dictionary created with {} employees".format(len(employeeDict)))
+    # print("Employee dictionary created with {} employees".format(len(employeeDict)))
 
 
     totalEmployeesByGroup = {}
     for employee in employeeDict.values():
-        if(employee[groupBy] == None):
-            employee[groupBy] = "Other"
-        currGroup = employee[groupBy].capitalize()
+        try:
+            currGroup = employee[groupBy].capitalize()
+        except:
+            currGroup = "Other"
+        # if(employee[groupBy] == None):
+        #     employee[groupBy] = "Other"
+        # currGroup = employee[groupBy].capitalize()
         if currGroup in totalEmployeesByGroup:
             totalEmployeesByGroup[currGroup] += 1
         else:
@@ -562,21 +462,39 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
 
         chunkCounter += 1
 
-def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=False):
-    # Connect to MySQL database
-    connection = create_server_connection(host, user_name, user_password, db_name)
+def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, connection = None):
+    if connection is None:
+        connection = create_server_connection(host, user_name, user_password, db_name)
 
     # Get all questions asked for a company during a given time period
-    query1 = "select id,question,option1,option2,option3,option4,option5,employees_type_data,actual_schedule_time from surveyquestions where compid = {} and schedule_time >= '{}' and schedule_time <= '{}' and scheduled_count<>0;".format(companyID, startDate, endDate)
+    query1 = "select id,question,option1,option2,option3,option4,option5,employees_type_data,actual_schedule_time from surveyquestions where compid = {} and actual_schedule_time >= '{}' and actual_schedule_time <= '{}' and scheduled_count<>0;".format(companyID, startDate, endDate)
     result1 = execute_query(connection, query1)
 
+    query3 = "select {},count(*) from employee where companyId={} and status='active' group by {};".format(groupBy, companyID, groupBy)
+    result3 = execute_query(connection, query3)
+    employeeGroupList = []
+    for row3 in result3:
+        group = row3[0]
+        if group == None:
+            group = "Other"
+        if group == "":
+            group = "Other"
+        group = group.capitalize()
+        employeeGroupList.append(row3[0])
+
+    # Remove duplicates from employeeGroupList
+    employeeGroupList = list(set(employeeGroupList))
+
     allDataByQuestion = []
+
+    s = requests.Session()
     for row1 in result1:
         questionID = row1[0]
         question = row1[1]
-        if row1[7] != "English":
+        if not (row1[7] == "English" or row1[7] == "FC" or row1[7] == "DP-English"):
             if question is not None:
-                question = translateToEnglishDos(question.replace('\"', ""))
+                # question = translateToEnglishDos(question)
+                question = fastTranslateToEnglish(s, question)
         # check if question is null
         if question is None:
             tempQuery = "select content_file from surveyquestions where id = {}".format(questionID)
@@ -588,28 +506,13 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=False):
         query2 = "select e.{},n.answer from notifications n left join employee e on n.empId=e.id where message_id={} and answer is not null;".format(groupBy, questionID)
         result2 = execute_queryNoTime(connection, query2)
 
-        query3 = "select {},count(*) from employee where companyId={} and status='active' group by {};".format(groupBy, companyID, groupBy)
-        result3 = execute_queryNoTime(connection, query3)
-        employeeDict = {}
-        for row3 in result3:
-            group = row3[0]
-            if group == None:
-                group = "Other"
-            if group == "":
-                group = "Other"
-            group = group.capitalize()
-            if group in employeeDict:
-                employeeDict[group] += row3[1]
-            else:
-                employeeDict[group] = row3[1]
-        
         optionList = []
         for i in range(2,7):
             if row1[i] != None and row1[i] != "":
                 optionList.append(row1[i])
 
         answerDictByGroup = {}
-        for group in employeeDict:
+        for group in employeeGroupList:
             answerDictByGroup[group] = {}
             for option in optionList:
                 answerDictByGroup[group][option] = 0
@@ -617,30 +520,36 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=False):
         for row2 in result2:
             answerDictByGroup[row2[0].capitalize()][row2[1]] += 1
 
-
         allDataByQuestion.append([question, answerDictByGroup, optionList, row1[7], row1[8]])
             
+    # Remove duplicates
     currLength = len(allDataByQuestion) - 1
     idx = 0
     while idx < currLength:
-        isSame = allDataByQuestion[idx][4] == allDataByQuestion[idx+1][4] and allDataByQuestion[idx][3] != allDataByQuestion[idx+1][3]
-        if isSame:
-            firstAnswerDict = allDataByQuestion[idx][1]
-            secondAnswerDict = allDataByQuestion[idx+1][1]
-            firstAnswerDictKeyList = list(firstAnswerDict.keys())
-            for i in range(len(firstAnswerDictKeyList)):
-                currGroup = firstAnswerDictKeyList[i]
-                k = 0
-                secondAnswerCurrGroupValueList = list(secondAnswerDict[currGroup].values())
-                for j in firstAnswerDict[currGroup].keys():
-                    firstAnswerDict[currGroup][j] += secondAnswerCurrGroupValueList[k]
-                    k += 1
-            allDataByQuestion.pop(idx+1)
-            currLength -= 1
-            continue
+        try:
+            isSame = allDataByQuestion[idx][4] == allDataByQuestion[idx+1][4] 
+            # and allDataByQuestion[idx][3] != allDataByQuestion[idx+1][3]
+            if isSame:
+                firstAnswerDict = allDataByQuestion[idx][1]
+                secondAnswerDict = allDataByQuestion[idx+1][1]
+                firstAnswerDictKeyList = list(firstAnswerDict.keys())
+                for i in range(len(firstAnswerDictKeyList)):
+                    currGroup = firstAnswerDictKeyList[i]
+                    k = 0
+                    secondAnswerCurrGroupValueList = list(secondAnswerDict[currGroup].values())
+                    for j in firstAnswerDict[currGroup].keys():
+                        firstAnswerDict[currGroup][j] += secondAnswerCurrGroupValueList[k]
+                        k += 1
+                allDataByQuestion.pop(idx+1)
+                currLength -= 1
+                continue
+        except:
+            print("False duplicate found at index: " + str(idx))
+            print("Confused question ids: " + str(allDataByQuestion[idx][0]) + " and " + str(allDataByQuestion[idx+1][0]))
+            pass
         idx += 1
 
-
+    # Add Slides
     for i in range(len(allDataByQuestion)):
         currQuestion = allDataByQuestion[i]
         question = currQuestion[0]
@@ -648,24 +557,27 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=False):
         optionList = currQuestion[2]
         # Create a new slide for each question
         # print(questionID, question)
-        slide = createBlankSlideWithTitle(prs, question, 25)
+        if len(question) > 180:
+            slide = createBlankSlideWithTitle(prs, question, 18)
+        else:
+            slide = createBlankSlideWithTitle(prs, question, 25)
 
         # Create a table for the question
-        if percentage:
+        if percentage == 2:
             createPercentValueTable(slide, answerDictByGroup, optionList)
         else:
             createValueTable(slide, answerDictByGroup, optionList)
         # Create a pie chart for the question
         createValuePieChart(slide, answerDictByGroup, optionList)
-
-
+    
 
 def generateFullReport(companyID, filename, groupBy, startDate, endDate, options):
     startTime = time.time()
     prs = pptx.Presentation()
+    connection = create_server_connection(host, user_name, user_password, db_name)
     if (options[0] == 1):
         if sum(options) == 4:
-            titleSlide = createTitleSlide (prs, "Full Report for " + companyID, startDate, endDate)
+            titleSlide = createTitleSlide(prs, "Full Report for " + companyID, startDate, endDate)
         else:
             titleText = "Report for " + companyID + " with "
             if options[1] == 1:
@@ -677,15 +589,13 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             titleText = titleText[:-2]
             titleSlide = createTitleSlide (prs, titleText, startDate, endDate)
     if (options[1] != 0):
-        addDownloadData(prs, companyID, groupBy)
+        addDownloadData(prs, companyID, groupBy, connection)
     if (options[2] != 0):
-        addLearnData(prs, companyID, groupBy, startDate, endDate)
+        addLearnData(prs, companyID, groupBy, startDate, endDate, connection)
     if (options[3] != 0):
-        if options[3] == 1:
-            addValueData(prs, companyID, groupBy, startDate, endDate, False)
-        elif options[3] == 2:
-            addValueData(prs, companyID, groupBy, startDate, endDate, True)
+        addValueData(prs, companyID, groupBy, startDate, endDate, options[3], connection)
 
+    print("PPTX file creation took {} seconds".format(time.time() - startTime))
     saved = False
     try:
         prs.save(myPath + filename + ".pptx")
@@ -710,9 +620,6 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
         if(number == 10):
             print("File could not be saved.")
             return None
-            break
-    print("PPTX file creation took {} seconds".format(time.time() - startTime))
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-#generateFullReport(51, "Test56", "dept", "2022-06-01", "2022-06-14", (1, 1, 1, 0))
-
+generateFullReport("92", "92Test2", "level", "2022-05-01", "2022-06-14", (1, 1, 1, 1))
