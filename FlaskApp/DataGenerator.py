@@ -257,12 +257,13 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     # Set current answer dictionary to first dictionary
     answerDictByGroup = answerDictByGroup1
 
-    # Table positional constants
+    # First table positional constants
     left = Inches(2.75)
     top = Inches(1.5)
     width = Inches(7)
     height = Inches(2)
-    # Create table
+
+    # Create first table
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
     # Add headers to table
@@ -303,13 +304,13 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     # Set current answer dictionary to second dictionary
     answerDictByGroup = answerDictByGroup2
 
-    # Table positional constants
+    # Second able positional constants
     left = Inches(2.75)
     top = Inches(4.25)
     width = Inches(7)
     height = Inches(2)
 
-    # Create table
+    # Create second table
     table2 = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
     # Add headers to table
@@ -351,97 +352,142 @@ def createDoubleValueTable(slide, answerDictByGroup, optionList):
     # Split dictionary into two dictionaries of equal length
     answerDictByGroup1 = {}
     answerDictByGroup2 = {}
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+    # Split dictionary into two dictionaries
     for i in range(len(answerDictByGroup)):
         if i % 2 == 0:
             answerDictByGroup1[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
         else:
             answerDictByGroup2[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
     # Create tables
-
+    # Set current answer dictionary to first dictionary
     answerDictByGroup = answerDictByGroup1
 
+    # First table positional constants
     left = Inches(2.75)
     top = Inches(1.5)
     width = Inches(7)
     height = Inches(2)
+
+    # Create first table
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table.rows[0].cells[0].text = "Response"
 
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table
     for i in range(len(optionList)):
+        # Set column header to option name
         table.rows[i+1].cells[0].text = optionList[i]
+        # Iterate through answerDictByGroup and add data to table
         for j in range(len(answerDictByGroup)):
             table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
+    # Add total row to table
     table.rows[len(optionList)+1].cells[0].text = "Total"
     for j in range(len(answerDictByGroup)):
         table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
+    # Set first table font size
     setTableFontSize(table, 16)
 
+    # Do the whole thing over again for the second dictionary
+    # Set current answer dictionary to second dictionary
     answerDictByGroup = answerDictByGroup2
 
+    # Second table positional constants
     left = Inches(2.75)
     top = Inches(4.25)
     width = Inches(7)
     height = Inches(2)
 
+    # Create second table
     table2 = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table2.rows[0].cells[0].text = "Response"
+
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table2.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table
     for i in range(len(optionList)):
+        # Set column header to option name
         table2.rows[i+1].cells[0].text = optionList[i]
+        # Iterate through answerDictByGroup and add data to table
         for j in range(len(answerDictByGroup)):
             table2.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
+    # Add total row to table
     table2.rows[len(optionList)+1].cells[0].text = "Total"
+    # Iterate through answerDictByGroupValueList and add total data to table
     for j in range(len(answerDictByGroup)):
         table2.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
-
+    # Set second table font size
     setTableFontSize(table2, 16)
 
 
-
 def createValuePieChart(slide, answerDictByGroup, optionList):
+    '''Create a pie chart for the given answer dictionary and option list.'''
+    # Create new chart data object
     chart_data = ChartData()
+
+    # Create chart categories list
     chartCategoriesList = []
     for i in range(len(optionList)):
+        # Add option name to chart categories list
+        # If option name is longer than 20 characters, truncate it
         if len(optionList[i]) > 20:
             chartCategoriesList.append(optionList[i][:17] + "...")
         else:
             chartCategoriesList.append(optionList[i])
         
+    # Set chart categories
     chart_data.categories = chartCategoriesList
-    #chart_data.add_series('Response', answerDictByGroup)
+    # Create list of answer data keys
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
+    # Create dictionary of answer data
     numAnswersDict = {}
+    # Iterate through answerDictByGroup and add data to dictionary
     for i in range(len(optionList)):
         numAnswersDict[optionList[i]] = sum(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]] for j in range(len(answerDictByGroup)))
+    
+    # Iterate through numAnswersDict and convert to percentages
     answerPercentageDict = {}
     for i in range(len(optionList)):
         try:
             answerPercentageDict[optionList[i]] = numAnswersDict[optionList[i]] / sum(numAnswersDict.values())
         except ZeroDivisionError:
             answerPercentageDict[optionList[i]] = 0
+
+    # Set chart data
     chart_data.add_series('Response', answerPercentageDict.values())
+
+    # Set height based on amount of options
     if len(optionList) > 4:
         height = Inches(3.5)
     else:
         height = Inches(3)
+    
+    # Create chart
     pieChart = slide.shapes.add_chart(XL_CHART_TYPE.PIE, Inches(0), Inches(2.5), Inches(3), height, chart_data).chart
+    # Set chart style
     pieChart.chart_style = 26
     pieChart.has_legend = True
     pieChart.legend.position = pptx.enum.chart.XL_LEGEND_POSITION.BOTTOM
