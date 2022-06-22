@@ -122,7 +122,6 @@ def generateReport():
 
         optionsString = optionsString[:-2]
         
-        print(options)
     
         if not endDate:
             endDate = todayDate.strftime("%Y-%m-%d")

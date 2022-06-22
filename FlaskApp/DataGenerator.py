@@ -1,6 +1,4 @@
-import datetime
 import itertools
-from matplotlib.pyplot import connect
 import pptx
 from pptx.util import Pt
 from pptx.util import Inches
@@ -47,7 +45,7 @@ def addDownloadData(prs, companyID, groupBy, connection = None):
     # Query for appropriate columns and company ID
     query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
     # Attempt to execute_query and set result1 to the result of the query
-    result1 = execute_query(connection, query1)
+    result1 = execute_queryNoTime(connection, query1)
     # create dictionary of employee dictionaries
     employeeDict = {}
     for row in result1:
@@ -110,9 +108,9 @@ def createValueTable(slide, answerDictByGroup, optionList):
     if len(answerDictByGroup) > 4:
         createDoubleValueTable(slide, answerDictByGroup, optionList)
         return
-    left = Inches(3)
+    left = Inches(2.75)
     top = Inches(2.5)
-    width = Inches(6.75)
+    width = Inches(7)
     height = Inches(2)
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
@@ -135,9 +133,9 @@ def createPercentValueTable(slide, answerDictByGroup, optionList):
     if len(answerDictByGroup) > 4:
         createDoublePercentValueTable(slide, answerDictByGroup, optionList)
         return
-    left = Inches(3)
+    left = Inches(2.75)
     top = Inches(2.5)
-    width = Inches(6.75)
+    width = Inches(7)
     height = Inches(2)
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
@@ -179,7 +177,7 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
 
     left = Inches(2.75)
     top = Inches(1.5)
-    width = Inches(6.75)
+    width = Inches(7)
     height = Inches(2)
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
@@ -257,7 +255,7 @@ def createDoubleValueTable(slide, answerDictByGroup, optionList):
 
     left = Inches(2.75)
     top = Inches(1.5)
-    width = Inches(6.75)
+    width = Inches(7)
     height = Inches(2)
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
@@ -351,7 +349,7 @@ def addLearnData(prs, companyID, groupBy, startDate, endDate, connection = None)
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
-    query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
+    query1 = "select id,{},status from employee where status ='active' and companyID={}".format(groupBy, companyID)
     query2 = '''select c.display_name,e.{},count(*) from score s
 left join employee e on e.id = s.userid
 left join course c on c.course_id = s.course_id
@@ -360,8 +358,8 @@ and s.date >='{}' and s.date <='{}'
 group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(endDate), groupBy)
 
     # Attempt to execute_query and set result1 to the result of the query
-    result1 = execute_query(connection, query1)
-    result2 = execute_query(connection, query2)
+    result1 = execute_queryNoTime(connection, query1)
+    result2 = execute_queryNoTime(connection, query2)
     # create dictionary of employee dictionaries
     employeeDict = {}
     for row in result1:
@@ -376,13 +374,13 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
             currGroup = employee[groupBy].capitalize()
         except:
             currGroup = "Other"
-        # if(employee[groupBy] == None):
-        #     employee[groupBy] = "Other"
-        # currGroup = employee[groupBy].capitalize()
         if currGroup in totalEmployeesByGroup:
             totalEmployeesByGroup[currGroup] += 1
         else:
             totalEmployeesByGroup[currGroup] = 1
+
+        
+    print("Total employees by group: {}".format(totalEmployeesByGroup))
     
     dataDict = {}
     courseList = []
@@ -446,16 +444,14 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                 companyLearning += totalLearning
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
             
-            currLearning = 0
-            for i in range (0, len(currChunkKeys)):
-                currLearning += totalEmployeesLearningByGroup[currChunkKeys[i]]
-
-            currEmployeeCount = 0
-            for i in range (0, len(currChunkKeys)):
-                currEmployeeCount += totalEmployeesByGroup[currChunkKeys[i]]
-
-
+            # Runs on last slide of slice
             if len(currCourseList) < (max_table_width):
+                currLearning = 0
+                for i in range (0, len(currChunkKeys)):
+                    currLearning += totalEmployeesLearningByGroup[currChunkKeys[i]]
+                currEmployeeCount = 0
+                for i in range (0, len(currChunkKeys)):
+                    currEmployeeCount += totalEmployeesByGroup[currChunkKeys[i]]
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+1].text = str(currEmployeeCount - currLearning)
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[len(currCourseList)+2].text = str(currEmployeeCount)
             sliceCounter += 1
@@ -468,19 +464,18 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
 
     # Get all questions asked for a company during a given time period
     query1 = "select id,question,option1,option2,option3,option4,option5,employees_type_data,actual_schedule_time from surveyquestions where compid = {} and actual_schedule_time >= '{}' and actual_schedule_time <= '{}' and scheduled_count<>0;".format(companyID, startDate, endDate)
-    result1 = execute_query(connection, query1)
+    result1 = execute_queryNoTime(connection, query1)
 
     query3 = "select {},count(*) from employee where companyId={} and status='active' group by {};".format(groupBy, companyID, groupBy)
-    result3 = execute_query(connection, query3)
+    result3 = execute_queryNoTime(connection, query3)
     employeeGroupList = []
     for row3 in result3:
         group = row3[0]
-        if group == None:
+        if group == None or group == "":
             group = "Other"
-        if group == "":
-            group = "Other"
-        group = group.capitalize()
-        employeeGroupList.append(row3[0])
+        else:
+            group = group.capitalize()
+        employeeGroupList.append(group)
 
     # Remove duplicates from employeeGroupList
     employeeGroupList = list(set(employeeGroupList))
@@ -498,7 +493,7 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
         # check if question is null
         if question is None:
             tempQuery = "select content_file from surveyquestions where id = {}".format(questionID)
-            tempResult = execute_query(connection, tempQuery)
+            tempResult = execute_queryNoTime(connection, tempQuery)
             question = tempResult[0][0]
             #question = "https://backoffice.seek-app.com//storage/" + question
             #question = processURL(question).replace('\\n', " ")
@@ -516,6 +511,7 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
             answerDictByGroup[group] = {}
             for option in optionList:
                 answerDictByGroup[group][option] = 0
+        
         
         for row2 in result2:
             answerDictByGroup[row2[0].capitalize()][row2[1]] += 1
@@ -545,7 +541,7 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
                 continue
         except:
             print("False duplicate found at index: " + str(idx))
-            print("Confused question ids: " + str(allDataByQuestion[idx][0]) + " and " + str(allDataByQuestion[idx+1][0]))
+            print("Confused questions: " + str(allDataByQuestion[idx][0]) + " and " + str(allDataByQuestion[idx+1][0]))
             pass
         idx += 1
 
@@ -590,10 +586,13 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             titleSlide = createTitleSlide (prs, titleText, startDate, endDate)
     if (options[1] != 0):
         addDownloadData(prs, companyID, groupBy, connection)
+        print("Download data added after {} seconds".format(time.time() - startTime))
     if (options[2] != 0):
         addLearnData(prs, companyID, groupBy, startDate, endDate, connection)
+        print("Learn data added after {} seconds".format(time.time() - startTime))
     if (options[3] != 0):
         addValueData(prs, companyID, groupBy, startDate, endDate, options[3], connection)
+        print("Value data added after {} seconds".format(time.time() - startTime))
 
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
     saved = False
@@ -622,4 +621,4 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             return None
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-generateFullReport("92", "92Test2", "level", "2022-05-01", "2022-06-14", (1, 1, 1, 1))
+generateFullReport("51", "51Test1", "dept", "2022-06-01", "2022-06-14", (1, 1, 1, 2))
