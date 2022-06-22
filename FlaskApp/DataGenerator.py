@@ -655,7 +655,7 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
             tempQuery = "select content_file from surveyquestions where id = {}".format(questionID)
             tempResult = execute_queryNoTime(connection, tempQuery)
             question = tempResult[0][0]
-            #question = "https://backoffice.seek-app.com//storage/" + question
+            #question = "https://backoffice.seek-app.com/storage/" + question
             #question = processURL(question).replace('\\n', " ")
             
         query2 = "select e.{},n.answer from notifications n left join employee e on n.empId=e.id where message_id={} and answer is not null;".format(groupBy, questionID)
@@ -713,10 +713,13 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
         optionList = currQuestion[2]
         # Create a new slide for each question
         # print(questionID, question)
-        if len(question) > 180:
-            slide = createBlankSlideWithTitle(prs, question, 18)
+        if question.startswith("uploads"):
+            slide = createBlankSlideWithTitle(prs, "Image", 25, True, "https://backoffice.seek-app.com/storage/" + question)
         else:
-            slide = createBlankSlideWithTitle(prs, question, 25)
+            if len(question) > 180:
+                slide = createBlankSlideWithTitle(prs, question, 18)
+            else:
+                slide = createBlankSlideWithTitle(prs, question, 25)
 
         # Create a table for the question
         if percentage == 2:
@@ -745,30 +748,42 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             titleText = titleText[:-2]
             titleSlide = createTitleSlide (prs, titleText, startDate, endDate)
     if (options[1] != 0):
+        # Add download data
         addDownloadData(prs, companyID, groupBy, connection)
         print("Download data added after {} seconds".format(time.time() - startTime))
     if (options[2] != 0):
+        # Add learn data
         addLearnData(prs, companyID, groupBy, startDate, endDate, connection)
         print("Learn data added after {} seconds".format(time.time() - startTime))
     if (options[3] != 0):
+        # Add value data
+        # option[3] could be 1 (value data) or 2 (percent value data)
         addValueData(prs, companyID, groupBy, startDate, endDate, options[3], connection)
         print("Value data added after {} seconds".format(time.time() - startTime))
 
 
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
-    saved = False
+    
+    # Save the presentation with original filename
     try:
         prs.save(myPath + filename + ".pptx")
-        saved = True
         print("File saved as " + myPath + filename + ".pptx")
+        # return the file path
         return (myPath + filename + ".pptx")
+
+    # If the file cannot be written, save it with a different filename
     except:
+        # Add a number to the end of the filename to make it unique
         number = filename[-1]
+        # Check if last digit is a number
         try:
             number = int(number)
+        # If it is not a number, add a 1 to the end
         except:
             number = 1
             filename = filename + str(number)
+
+    saved = False
     while(saved == False):
         try:
             prs.save(myPath + filename[:-1] + str(number) + ".pptx")

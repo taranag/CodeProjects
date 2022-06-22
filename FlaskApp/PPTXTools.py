@@ -32,7 +32,7 @@ def createTitleSlide(prs, title, startDate, endDate):
     logo = slide.shapes.add_picture(logoPath, pptx.util.Inches(8.45), logoTop, pptx.util.Inches(1.54), pptx.util.Inches(1.42))
     return slide
 
-def createBlankSlideWithTitle(prs, title, fontSize=44):
+def createBlankSlideWithTitle(prs, title, fontSize=44, hLink=False, hLinkText=""):
     """
     Creates a blank slide with a title and logo image
     """
@@ -50,6 +50,8 @@ def createBlankSlideWithTitle(prs, title, fontSize=44):
 
     text_frame.paragraphs[0].runs[0].font.size = Pt(fontSize)
     text_frame.paragraphs[0].runs[0].font.bold = True
+    if hLink:
+        text_frame.paragraphs[0].runs[0].hyperlink.address = hLinkText
 
     left = top = width = height = pptx.util.Inches(1)
     slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
@@ -91,7 +93,7 @@ def createTableWithFinalLearnHeaders(slide, headers, rows, cols):
     """
     left = Inches(.2)
     top = Inches(1.5)
-    width = Inches(10)
+    width = Inches(9.6)
     height = Inches(2)
     table = slide.shapes.add_table(rows, cols, left, top, width, height).table
     # table.table.columns[2].width = Inches(2)
@@ -101,5 +103,5 @@ def createTableWithFinalLearnHeaders(slide, headers, rows, cols):
         table.rows[0].cells[i+1].text = headers[i]
     table.rows[0].cells[len(headers)+1].text = "Not on Learn"
     table.rows[0].cells[len(headers)+2].text = "Total"
-    table.columns[len(headers)+2].width = Inches(1)
+    # table.columns[len(headers)+2].width = Inches(1)
     return table
