@@ -1,3 +1,11 @@
+# DataGenerator.py
+# This file contains the main function that generates reports
+#
+# Author: Taran Agnihotri
+# Last Updated: 22/6/2022
+# Version: 1.0
+
+# Imports
 import itertools
 import pptx
 from pptx.util import Pt
@@ -8,21 +16,22 @@ from pptx.chart.data import ChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from PPTXTools import *
 
+# Database Details
 host = 'localhost'
 user_name = 'taran'
 user_password = 'DESKTOP-RMV78RR'
 db_name = 'seekapp'
+
+# Constants
 myPath = "static/generated/"
 logoPath = "SeekLogo.png"
 max_table_size = 8
 max_table_width = 5
-
-
 logoLeft, logoTop, logoHeight, logoWidth = 8293608, 18288, 768096, 841248
 
-
 def fastTranslateToEnglish(session, text):
-    '''Detect the language of the text and translate it to english'''
+    '''Use google translate api to automatically translate text to english'''
+    '''Requires a session object to be passed in'''
     url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" + text
     response = session.get(url)
     response = response.json()
@@ -32,72 +41,110 @@ def fastTranslateToEnglish(session, text):
     return returnString
     
 def getCompanies():
+    '''Returns a list of all companies in the database'''
     connection = create_server_connection(host, user_name, user_password, db_name)
     query = "SELECT id, name FROM company where status='active'"
     result = execute_query(connection, query)
     return result
 
 def addDownloadData(prs, companyID, groupBy, connection = None):
+    '''Adds download data slides to the presentation'''
+
+    # If no database connection is passed in, create a new one
     if connection is None:
         connection = create_server_connection(host, user_name, user_password, db_name)
 
     # Get all non inactive employees in the company
     # Query for appropriate columns and company ID
     query1 = "select id,{},status from employee where status !='inactive' and companyID={}".format(groupBy, companyID)
-    # Attempt to execute_query and set result1 to the result of the query
+    # results in form (id, groupBy, status)
+
+    # Attempt to execute query and set result1 to the result of the query
     result1 = execute_queryNoTime(connection, query1)
+
     # create dictionary of employee dictionaries
     employeeDict = {}
     for row in result1:
         employeeDict[row[0]] = {groupBy: row[1], "status": row[2]}
         # format: employeeDict[id] = [dept, status]
-    #print("Employee dictionary created with {} employees".format(len(employeeDict)))
+
+    # Test code for employeeDict
+    # print("Employee dictionary created with {} employees".format(len(employeeDict)))
 
     # Create dictionary of unit dictionaries
     activeInactiveByGroup = {}
     for employee in employeeDict.values():
+        # If no group is specified, default to "Other"
         if(employee[groupBy] == None):
             employee[groupBy] = "Other"
         currGroup = employee[groupBy].capitalize()
+        # If group already exists in dictionary, add employee to respective group
         if currGroup in activeInactiveByGroup:
             if employee["status"] == "active":
                 activeInactiveByGroup[currGroup][0] += 1
             else:
                 activeInactiveByGroup[currGroup][1] += 1
+        # If group does not exist in dictionary, create it
         else:
             if employee["status"] == "active":
                 activeInactiveByGroup[currGroup] = [1, 0]
             else:
                 activeInactiveByGroup[currGroup] = [0, 1]
 
-    #print("Active/Inactive dictionary created with {} units".format(len(activeInactiveByGroup)))
-    #print(activeInactiveByGroup)
+    # Test code to print out active/inactive by group
+    # print(activeInactiveByGroup)
 
+    # Add download data slides to presentation
     chunkCounter = 0
     while (len(activeInactiveByGroup) > chunkCounter*max_table_size):
         if chunkCounter == 0:
+            # Create first slide
             slide = createBlankSlideWithTitle(prs, "Download Status")
         else:
+            # Create continuation slide
             slide = createBlankSlideWithTitle(prs, "Download Status Continued")
+        
+        # Set currChunk to the current chunk of the data dictionary
         currChunk = dict(itertools.islice(activeInactiveByGroup.items(), chunkCounter*max_table_size, chunkCounter*max_table_size + max_table_size))
+        
+        # Create table
         groupDownloadTable = createTableWithDownloadHeaders(slide, len(currChunk) + 2, 5, Inches(1), Inches(1.5), Inches(8), Inches(2))
+        
+        # Create lists for efficiency (to avoid iterating over dictionary multiple times)
         currChunkKeys = list(currChunk.keys())
         currChunkValues = list(currChunk.values())
+
+        # Add data to table
         for i in range (0, len(currChunk)):
+            # Add row to table
+            # Set first column to group name
             groupDownloadTable.rows[i+1].cells[0].text = currChunkKeys[i]
+            # Set second column to number of active employees (downloaded)
             groupDownloadTable.rows[i+1].cells[1].text = str(currChunkValues[i][0])
+            # Set third column to number of inactive employees (yet to download)
             groupDownloadTable.rows[i+1].cells[2].text = str(currChunkValues[i][1])
+
+            # Set fourth column to total number of employees
             groupDownloadTable.rows[i+1].cells[3].text = str(currChunkValues[i][0] + currChunkValues[i][1])
+
+            # Set fifth column to percentage of active employees
             if currChunkValues[i][0] + currChunkValues[i][1] == 0:
                 groupDownloadTable.rows[i+1].cells[4].text = "0%"
             else:
                 groupDownloadTable.rows[i+1].cells[4].text = str(round((currChunkValues[i][0])/(currChunkValues[i][0] + currChunkValues[i][1])*100)) + "%"
+        
+        # Add total row to table
         groupDownloadTable.rows[len(currChunk)+1].cells[0].text = "Total"
+        # Set second column to total number of active employees (downloaded)
         groupDownloadTable.rows[len(currChunk)+1].cells[1].text = str(sum(currChunkValues[i][0] for i in range(len(currChunk))))
+        # Set third column to total number of inactive employees (yet to download)
         groupDownloadTable.rows[len(currChunk)+1].cells[2].text = str(sum(currChunkValues[i][1] for i in range(len(currChunk))))
+        # Set fourth column to total number of employees
         groupDownloadTable.rows[len(currChunk)+1].cells[3].text = str(sum(currChunkValues[i][0] + currChunkValues[i][1] for i in range(len(currChunk))))
+        # Set fifth column to total percentage of active employees
         groupDownloadTable.rows[len(currChunk)+1].cells[4].text = str(round((sum(currChunkValues[i][0] for i in range(len(currChunk))))/(sum(currChunkValues[i][0] + currChunkValues[i][1] for i in range(len(currChunk))))*100)) + "%"
         
+        # Increment chunk counter
         chunkCounter += 1
         
 
@@ -105,55 +152,88 @@ def addDownloadData(prs, companyID, groupBy, connection = None):
 
 
 def createValueTable(slide, answerDictByGroup, optionList):
+    '''Creates a table with the values of the answerDictByGroup dictionary'''
+
+    # If answerDictByGroup longer than 4, create multiple tables
     if len(answerDictByGroup) > 4:
         createDoubleValueTable(slide, answerDictByGroup, optionList)
         return
+
+    # Table positional constants
     left = Inches(2.75)
     top = Inches(2.5)
     width = Inches(7)
     height = Inches(2)
+
+    # Create table
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table.rows[0].cells[0].text = "Response"
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table
     for i in range(len(optionList)):
+        # Set column header to option name
         table.rows[i+1].cells[0].text = optionList[i]
+        # Iterate through answerDictByGroup and add data to table
         for j in range(len(answerDictByGroup)):
             table.rows[i+1].cells[j+1].text = str(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])
     
+    # Add total row to table
     table.rows[len(optionList)+1].cells[0].text = "Total"
+    # Iterate through answerDictByGroupValueList and add total data to table
     for j in range(len(answerDictByGroup)):
         table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
 def createPercentValueTable(slide, answerDictByGroup, optionList):
+    '''Creates a table with the percent values of the answerDictByGroup dictionary'''
+
+    # If answerDictByGroup longer than 4, create multiple tables
     if len(answerDictByGroup) > 4:
         createDoublePercentValueTable(slide, answerDictByGroup, optionList)
         return
+
+    # Table positional constants
     left = Inches(2.75)
     top = Inches(2.5)
     width = Inches(7)
     height = Inches(2)
+
+    # Create table
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table.rows[0].cells[0].text = "Response"
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table by percent
     for i in range(len(optionList)):
+        # Set column header to option name
         table.rows[i+1].cells[0].text = optionList[i]
+
+        # Iterate through answerDictByGroup and add data to table by percent
         for j in range(len(answerDictByGroup)):
             try:
                 table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
                 table.rows[i+1].cells[j+1].text = "0%"
 
+    # Add total row to table
     table.rows[len(optionList)+1].cells[0].text = "Total"
+    # Iterate through answerDictByGroupValueList and add total data to table by percent
     for j in range(len(answerDictByGroup)):
         try: 
             table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
@@ -164,77 +244,106 @@ def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     # Split dictionary into two dictionaries of equal length
     answerDictByGroup1 = {}
     answerDictByGroup2 = {}
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+    # Split dictionary into two dictionaries
     for i in range(len(answerDictByGroup)):
         if i % 2 == 0:
             answerDictByGroup1[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
         else:
             answerDictByGroup2[answerDictByGroupKeyList[i]] = answerDictByGroupValueList[i]
 
-
+    # Set current answer dictionary to first dictionary
     answerDictByGroup = answerDictByGroup1
 
+    # Table positional constants
     left = Inches(2.75)
     top = Inches(1.5)
     width = Inches(7)
     height = Inches(2)
+    # Create table
     table = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table.rows[0].cells[0].text = "Response"
 
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table by percent
     for i in range(len(optionList)):
+        # Set column header to option name
         table.rows[i+1].cells[0].text = optionList[i]
+        # Iterate through answerDictByGroup and add data to table by percent
         for j in range(len(answerDictByGroup)):
             try:
                 table.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
                 table.rows[i+1].cells[j+1].text = "0%"
-            
+    
+    # Add total row to table
     table.rows[len(optionList)+1].cells[0].text = "Total"
+    # Iterate through answerDictByGroupValueList and add total data to table by percent
     for j in range(len(answerDictByGroup)):
         try:
             table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
             table.rows[len(optionList)+1].cells[j+1].text = "0%"
 
+    # Set table font size
     setTableFontSize(table, 16)
 
+    # Do the whole thing over again for the second dictionary
+    # Set current answer dictionary to second dictionary
     answerDictByGroup = answerDictByGroup2
 
+    # Table positional constants
     left = Inches(2.75)
     top = Inches(4.25)
     width = Inches(7)
     height = Inches(2)
 
+    # Create table
     table2 = slide.shapes.add_table(len(optionList) + 2, len(answerDictByGroup) + 1, left, top, width, height).table
 
+    # Add headers to table
     table2.rows[0].cells[0].text = "Response"
+
+    # Create lists for efficiency (to avoid iterating over dictionary multiple times)
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     answerDictByGroupValueList = list(answerDictByGroup.values())
+
+    # Set row headers to group names
     for i in range(len(answerDictByGroup)):
         table2.rows[0].cells[i+1].text = answerDictByGroupKeyList[i]
 
+    # Set column headers to option names and add data to table by percent
     for i in range(len(optionList)):
+        # Set column header to option name
         table2.rows[i+1].cells[0].text = optionList[i]
+        # Iterate through answerDictByGroup and add data to table by percent
         for j in range(len(answerDictByGroup)):
             try:
                 table2.rows[i+1].cells[j+1].text = str(round((answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]])/sum(answerDictByGroupValueList[j].values())*100)) + "%"
             except ZeroDivisionError:
                 table2.rows[i+1].cells[j+1].text = "0%"
-            
+
+    # Add total row to table        
     table2.rows[len(optionList)+1].cells[0].text = "Total"
+    # Iterate through answerDictByGroupValueList and add total data to table by percent
     for j in range(len(answerDictByGroup)):
         try:
             table2.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
             table2.rows[len(optionList)+1].cells[j+1].text = "0%"
     
+    # Set table font size
     setTableFontSize(table2, 16)
 
 
