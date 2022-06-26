@@ -41,9 +41,16 @@ prefix = app.config['APPLICATION_ROOT']
 @app.route(prefix + '/')
 def index():
     conn = get_db_connection()
-    posts = conn.execute('SELECT * FROM posts').fetchall()
+    reports = conn.execute('SELECT * FROM reports order by id desc').fetchall()
     conn.close()
-    return render_template('index.html', posts=posts)
+    return render_template('reports.html', reports=reports)
+
+
+# def index():
+#     conn = get_db_connection()
+#     posts = conn.execute('SELECT * FROM posts').fetchall()
+#     conn.close()
+#     return render_template('index.html', posts=posts)
 
 @app.route('/reports')
 def reports():
@@ -129,7 +136,9 @@ def generateReport():
         if not companyID or not groupBy or not startDate:
             flash('Please make sure all fields are filled out!')
         else:
-            fileName = "Company" + companyID + "By" + groupBy.capitalize() + "From" + startDate + "To" + endDate
+            fileName = companyID + "By" + groupBy.capitalize() + "From" + startDate + "To" + endDate
+            # Add date and time generated to filename
+            fileName += "_" + todayDate.strftime("%Y-%m-%d-%H-%M-%S")
             url = ""
             url = generateFullReport(companyID, fileName, groupBy, startDate, endDate, options)
             if (url != "" or url != None):

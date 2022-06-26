@@ -1,9 +1,26 @@
 import pptx
 from pptx.util import Pt
+from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches
+from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
+
 
 logoLeft, logoTop, logoHeight, logoWidth = 8293608, 18288, 768096, 841248
 logoPath = "SeekLogo.png"
+letterPath = "letter.png"
+
+def SubElement(parent, tagname, **kwargs):
+        element = OxmlElement(tagname)
+        element.attrib.update(kwargs)
+        parent.append(element)
+        return element
+
+def setShapeTransparency(shape, alpha):
+    """ Set the transparency (alpha) of a shape"""
+    ts = shape.fill._xPr.solidFill
+    sF = ts.get_or_change_to_srgbClr()
+    sE = SubElement(sF, 'a:alpha', val=str(alpha))
 
 def setTableFontSize(table, fontSize):
     for row in table.rows:
@@ -32,6 +49,43 @@ def createTitleSlide(prs, title, startDate, endDate):
     logo = slide.shapes.add_picture(logoPath, pptx.util.Inches(8.45), logoTop, pptx.util.Inches(1.54), pptx.util.Inches(1.42))
     return slide
 
+def createEndSlide(prs, text):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    background = slide.background
+    background.fill.solid()
+    background.fill.fore_color.rgb = RGBColor(56, 87, 36)
+    letter = slide.shapes.add_picture(letterPath, pptx.util.Inches(1.95), pptx.util.Inches(2.71), pptx.util.Inches(1.94), pptx.util.Inches(1.47))
+    left = Inches(1.9)
+    top = Inches(1.5)
+    width = Inches(2)
+    height = Inches(0.7)
+    txBox1 = slide.shapes.add_textbox(left, top, width, height)
+    thankBox = txBox1.text_frame
+    thankBox.text = "Thank You"
+    thankBox.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
+    thankBox.paragraphs[0].runs[0].font.size = Pt(32)
+    
+    left = Inches(5)
+    top = Inches(4)
+    width = Inches(3)
+    height = Inches(0.7)
+    txBox2 = slide.shapes.add_textbox(left, top, width, height)
+    linkBox = txBox2.text_frame
+    linkBox.text = text
+    linkBox.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
+    linkBox.paragraphs[0].runs[0].font.size = Pt(32)
+
+    left = Inches(4.83)
+    top = Inches(2.15)
+    width = Inches(4.03)
+    height = Inches(4.4)
+    squareAround = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
+    squareAround.fill.solid()
+    squareAround.fill.fore_color.rgb = RGBColor(255,255,255)
+    
+    setShapeTransparency(squareAround,0)
+
+
 def createBlankSlideWithTitle(prs, title, fontSize=44, hLink=False, hLinkText=""):
     """
     Creates a blank slide with a title and logo image
@@ -54,7 +108,9 @@ def createBlankSlideWithTitle(prs, title, fontSize=44, hLink=False, hLinkText=""
         text_frame.paragraphs[0].runs[0].hyperlink.address = hLinkText
 
     left = top = width = height = pptx.util.Inches(1)
-    slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
+    logo = slide.shapes.add_picture(logoPath, logoLeft, logoTop, logoWidth, logoHeight)
+    slide.shapes._spTree.remove(logo._element)
+    slide.shapes._spTree.insert(2, logo._element)
     return slide
 
 def createTableWithDownloadHeaders(slide, rows, cols, left, top, width, height):
