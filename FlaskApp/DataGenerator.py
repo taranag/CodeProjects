@@ -2,7 +2,7 @@
 # This file contains the main function that generates reports
 #
 # Author: Taran Agnihotri
-# Last Updated: 22/6/2022
+# Last Updated: June 27, 2022
 # Version: 1.0
 
 # Imports
@@ -579,7 +579,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
         sliceCounter = 0
-        while(len(courseList) > sliceCounter*max_table_width):
+        while((len(courseList) + 2) > sliceCounter*max_table_width):
             if chunkCounter == 0 and sliceCounter == 0:
                 slide = createBlankSlideWithTitle(prs, "Learn Status")
             else:
@@ -607,7 +607,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                 else:
                     totalEmployeesLearningByGroup[currChunkKeys[i]] = totalLearning
                 #totalEmployeesLearningByGroup["total"] += totalLearning
-                if len(currCourseList) < (max_table_width):
+                if len(currCourseList) < (max_table_width - 1):
 
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalEmployeesLearningByGroup[currChunkKeys[i]])
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+2].text = str(totalEmployeesByGroup[currChunkKeys[i]])
@@ -623,7 +623,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
             
             # Runs on last slide of slice
-            if len(currCourseList) < (max_table_width):
+            if len(currCourseList) < (max_table_width - 1):
                 currLearning = 0
                 for i in range (0, len(currChunkKeys)):
                     currLearning += totalEmployeesLearningByGroup[currChunkKeys[i]]
@@ -821,4 +821,4 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             return None
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-generateFullReport("51", "51Test1", "dept", "2022-06-01", "2022-06-01", (2, 0, 0, 0))
+# generateFullReport("51", "51Test1", "dept", "2022-06-01", "2022-06-01", (2, 0, 0, 0))
