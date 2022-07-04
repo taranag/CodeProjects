@@ -2,7 +2,7 @@
 # This file contains the main function that generates reports
 #
 # Author: Taran Agnihotri
-# Last Updated: 22/6/2022
+# Last Updated: June 27, 2022
 # Version: 1.0
 
 # Imports
@@ -161,7 +161,7 @@ def createValueTable(slide, answerDictByGroup, optionList):
 
     # Table positional constants
     left = Inches(2.75)
-    top = Inches(2.5)
+    top = Inches(2)
     width = Inches(7)
     height = Inches(2)
 
@@ -192,6 +192,8 @@ def createValueTable(slide, answerDictByGroup, optionList):
     for j in range(len(answerDictByGroup)):
         table.rows[len(optionList)+1].cells[j+1].text = str(sum(answerDictByGroupValueList[j].values()))
 
+    setTableFontSize(table, 16)
+
 def createPercentValueTable(slide, answerDictByGroup, optionList):
     '''Creates a table with the percent values of the answerDictByGroup dictionary'''
 
@@ -202,7 +204,7 @@ def createPercentValueTable(slide, answerDictByGroup, optionList):
 
     # Table positional constants
     left = Inches(2.75)
-    top = Inches(2.5)
+    top = Inches(2)
     width = Inches(7)
     height = Inches(2)
 
@@ -239,6 +241,9 @@ def createPercentValueTable(slide, answerDictByGroup, optionList):
             table.rows[len(optionList)+1].cells[j+1].text = str(round(sum(answerDictByGroupValueList[j].values())/sum(answerDictByGroupValueList[j].values())*100)) + "%"
         except ZeroDivisionError:
             table.rows[len(optionList)+1].cells[j+1].text = "0%"
+
+    # 
+    setTableFontSize(table, 16)
 
 def createDoublePercentValueTable(slide, answerDictByGroup, optionList):
     # Split dictionary into two dictionaries of equal length
@@ -457,9 +462,9 @@ def createValuePieChart(slide, answerDictByGroup, optionList):
             chartCategoriesList.append(optionList[i][:17] + "...")
         else:
             chartCategoriesList.append(optionList[i])
-        
+    
     # Set chart categories
-    chart_data.categories = chartCategoriesList
+    #chart_data.categories = chartCategoriesList
     # Create list of answer data keys
     answerDictByGroupKeyList = list(answerDictByGroup.keys())
     # Create dictionary of answer data
@@ -467,34 +472,50 @@ def createValuePieChart(slide, answerDictByGroup, optionList):
     # Iterate through answerDictByGroup and add data to dictionary
     for i in range(len(optionList)):
         numAnswersDict[optionList[i]] = sum(answerDictByGroup[answerDictByGroupKeyList[j]][optionList[i]] for j in range(len(answerDictByGroup)))
-    
+
     # Iterate through numAnswersDict and convert to percentages
     answerPercentageDict = {}
     for i in range(len(optionList)):
+        # This omits any option with 0 answers from the pie chart (Comment out the if statement to include 0% options in pie chart)
+        if numAnswersDict[optionList[i]] == 0:
+            if len(optionList[i]) > 20:
+                chartCategoriesList.remove(optionList[i][:17] + "...")
+            else:
+                chartCategoriesList.remove(optionList[i])
+            continue
         try:
             answerPercentageDict[optionList[i]] = numAnswersDict[optionList[i]] / sum(numAnswersDict.values())
         except ZeroDivisionError:
+            # This should theoretically never happen, but just in case (Only happens if there are no answers for a question)
             answerPercentageDict[optionList[i]] = 0
 
+    # Set chart categories
+    chart_data.categories = chartCategoriesList
     # Set chart data
     chart_data.add_series('Response', answerPercentageDict.values())
 
     # Set height based on amount of options
+    # If length of optionlist is more than 4 or the sum of the length of the strings is greater than 50 add 0.5 inches to height
+    height = Inches(3)
     if len(optionList) > 4:
-        height = Inches(3.5)
-    else:
-        height = Inches(3)
+        height += Inches(.5)
+    if sum(len(i) for i in optionList) > 50:
+        height += Inches(.5)
+        
+
     
     # Create chart
-    pieChart = slide.shapes.add_chart(XL_CHART_TYPE.PIE, Inches(0), Inches(2.5), Inches(3), height, chart_data).chart
+    pieChart = slide.shapes.add_chart(XL_CHART_TYPE.PIE, Inches(-0.25), Inches(2), Inches(3), height, chart_data).chart
     # Set chart style
     pieChart.chart_style = 26
     pieChart.has_legend = True
     pieChart.legend.position = pptx.enum.chart.XL_LEGEND_POSITION.BOTTOM
     pieChart.legend.include_in_layout = False
+    pieChart.legend.font.size = Pt(16)
     pieChart.plots[0].has_data_labels = True
     data_labels = pieChart.plots[0].data_labels
     data_labels.number_format = '0%'
+    data_labels.font.size = Pt(16)
     data_labels.position = pptx.enum.chart.XL_LABEL_POSITION.OUTSIDE_END
 
 
@@ -558,7 +579,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
     chunkCounter = 0
     while (len(dataDict) > chunkCounter*max_table_size):
         sliceCounter = 0
-        while(len(courseList) > sliceCounter*max_table_width):
+        while((len(courseList) + 2) > sliceCounter*max_table_width):
             if chunkCounter == 0 and sliceCounter == 0:
                 slide = createBlankSlideWithTitle(prs, "Learn Status")
             else:
@@ -586,7 +607,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                 else:
                     totalEmployeesLearningByGroup[currChunkKeys[i]] = totalLearning
                 #totalEmployeesLearningByGroup["total"] += totalLearning
-                if len(currCourseList) < (max_table_width):
+                if len(currCourseList) < (max_table_width - 1):
 
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+1].text = str(totalEmployeesByGroup[currChunkKeys[i]] - totalEmployeesLearningByGroup[currChunkKeys[i]])
                     groupLearnTable.rows[i+1].cells[len(currCourseList)+2].text = str(totalEmployeesByGroup[currChunkKeys[i]])
@@ -602,7 +623,7 @@ group by c.display_name,e.{};'''.format(groupBy, companyID, str(startDate), str(
                 groupLearnTable.rows[len(currChunkKeys)+1].cells[i+1].text = str(totalLearning)
             
             # Runs on last slide of slice
-            if len(currCourseList) < (max_table_width):
+            if len(currCourseList) < (max_table_width - 1):
                 currLearning = 0
                 for i in range (0, len(currChunkKeys)):
                     currLearning += totalEmployeesLearningByGroup[currChunkKeys[i]]
@@ -655,7 +676,7 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
             tempQuery = "select content_file from surveyquestions where id = {}".format(questionID)
             tempResult = execute_queryNoTime(connection, tempQuery)
             question = tempResult[0][0]
-            #question = "https://backoffice.seek-app.com//storage/" + question
+            #question = "https://backoffice.seek-app.com/storage/" + question
             #question = processURL(question).replace('\\n', " ")
             
         query2 = "select e.{},n.answer from notifications n left join employee e on n.empId=e.id where message_id={} and answer is not null;".format(groupBy, questionID)
@@ -713,10 +734,13 @@ def addValueData(prs, companyID, groupBy, startDate, endDate, percentage=1, conn
         optionList = currQuestion[2]
         # Create a new slide for each question
         # print(questionID, question)
-        if len(question) > 180:
-            slide = createBlankSlideWithTitle(prs, question, 18)
+        if question.startswith("uploads"):
+            slide = createBlankSlideWithTitle(prs, "Image", 25, True, "https://backoffice.seek-app.com/storage/" + question)
         else:
-            slide = createBlankSlideWithTitle(prs, question, 25)
+            if len(question) > 180:
+                slide = createBlankSlideWithTitle(prs, question, 18)
+            else:
+                slide = createBlankSlideWithTitle(prs, question, 25)
 
         # Create a table for the question
         if percentage == 2:
@@ -731,8 +755,8 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
     startTime = time.time()
     prs = pptx.Presentation()
     connection = create_server_connection(host, user_name, user_password, db_name)
-    if (options[0] == 1):
-        if sum(options) == 4:
+    if (options[0] != 0):
+        if sum(options) >= 4:
             titleSlide = createTitleSlide(prs, "Full Report for " + companyID, startDate, endDate)
         else:
             titleText = "Report for " + companyID + " with "
@@ -745,30 +769,45 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             titleText = titleText[:-2]
             titleSlide = createTitleSlide (prs, titleText, startDate, endDate)
     if (options[1] != 0):
+        # Add download data
         addDownloadData(prs, companyID, groupBy, connection)
         print("Download data added after {} seconds".format(time.time() - startTime))
     if (options[2] != 0):
+        # Add learn data
         addLearnData(prs, companyID, groupBy, startDate, endDate, connection)
         print("Learn data added after {} seconds".format(time.time() - startTime))
     if (options[3] != 0):
+        # Add value data
+        # option[3] could be 1 (value data) or 2 (percent value data)
         addValueData(prs, companyID, groupBy, startDate, endDate, options[3], connection)
         print("Value data added after {} seconds".format(time.time() - startTime))
+    if (options[0] != 0):
+        if (options[0] == 2):
+            endSlide = createEndSlide(prs, "www.seek-app.com")
 
 
     print("PPTX file creation took {} seconds".format(time.time() - startTime))
-    saved = False
+    
+    # Save the presentation with original filename
     try:
         prs.save(myPath + filename + ".pptx")
-        saved = True
         print("File saved as " + myPath + filename + ".pptx")
+        # return the file path
         return (myPath + filename + ".pptx")
+
+    # If the file cannot be written, save it with a different filename
     except:
+        # Add a number to the end of the filename to make it unique
         number = filename[-1]
+        # Check if last digit is a number
         try:
             number = int(number)
+        # If it is not a number, add a 1 to the end
         except:
             number = 1
             filename = filename + str(number)
+
+    saved = False
     while(saved == False):
         try:
             prs.save(myPath + filename[:-1] + str(number) + ".pptx")
@@ -782,4 +821,4 @@ def generateFullReport(companyID, filename, groupBy, startDate, endDate, options
             return None
     return (myPath + filename[:-1] + str(number) + ".pptx")
 
-generateFullReport("51", "51Test1", "dept", "2022-06-01", "2022-06-14", (1, 1, 1, 2))
+# generateFullReport("51", "51Test1", "dept", "2022-06-01", "2022-06-01", (2, 0, 0, 0))
